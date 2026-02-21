@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老付家 | Laofujia.com</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e67e22;
+            --bg-color: #f8f9fa;
+        }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg-color); color: var(--primary-color); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .card { background: white; width: 90%; max-width: 500px; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; border-bottom: 3px solid var(--accent-color); display: inline-block; padding-bottom: 5px; }
+        p { color: #7f8c8d; line-height: 1.6; }
+        .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
+        .menu-item { padding: 15px; background: #fff; border: 2px solid #ecf0f1; border-radius: 12px; text-decoration: none; color: var(--primary-color); font-weight: bold; transition: all 0.3s ease; }
+        .menu-item:hover { background: var(--accent-color); color: white; border-color: var(--accent-color); transform: translateY(-3px); }
+        .footer { margin-top: 40px; font-size: 0.8rem; color: #bdc3c7; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>老付家</h1>
+        <p>欢迎来到老付家<br>这里记录学习，分享快乐，还有一些好玩的小游戏。</p>
+        
+        <div class="menu">
+            <a href="#" class="menu-item">📚 学习资料</a>
+            <a href="#" class="menu-item">✍️ 个人文章</a>
+            <a href="#" class="menu-item">🎮 小游戏</a>
+            <a href="#" class="menu-item">📁 资源收藏</a>
+        </div>
+
+        <div class="footer">
+            © 2026 Laofujia.com · 基于 GitHub Pages 驱动
+        </div>
+    </div>
+</body>
+</html>
