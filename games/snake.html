@@ -55,10 +55,24 @@
 
         document.addEventListener('keydown', e => {
             gameStarted = true;
-            if(e.key==='ArrowUp' && dy===0){dx=0;dy=-1}
-            if(e.key==='ArrowDown' && dy===0){dx=0;dy=1}
-            if(e.key==='ArrowLeft' && dx===0){dx=-1;dy=0}
-            if(e.key==='ArrowRight' && dx===0){dx=1;dy=0}
+            const key = e.key.toLowerCase(); // 统一转为小写，处理大写锁定问题
+
+            // 向上：上箭头 或 W
+            if((key === 'arrowup' || key === 'w') && dy === 0) {
+                dx = 0; dy = -1;
+            }
+            // 向下：下箭头 或 S
+            if((key === 'arrowdown' || key === 's') && dy === 0) {
+                dx = 0; dy = 1;
+            }
+            // 向左：左箭头 或 A
+            if((key === 'arrowleft' || key === 'a') && dx === 0) {
+                dx = -1; dy = 0;
+            }
+            // 向右：右箭头 或 D
+            if((key === 'arrowright' || key === 'd') && dx === 0) {
+                dx = 1; dy = 0;
+            }
         });
 
         setInterval(draw, 100);
