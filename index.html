@@ -15,7 +15,7 @@
         h1 { font-size: 2.5rem; margin-bottom: 10px; border-bottom: 3px solid var(--accent-color); display: inline-block; padding-bottom: 5px; }
         p { color: #7f8c8d; line-height: 1.6; }
         .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
-        .menu-item { padding: 15px; background: #fff; border: 2px solid #ecf0f1; border-radius: 12px; text-decoration: none; color: var(--primary-color); font-weight: bold; transition: all 0.3s ease; }
+        .menu-item { padding: 15px; background: #fff; border: 2px solid #ecf0f1; border-radius: 12px; text-decoration: none; color: var(--primary-color); font-weight: bold; transition: all 0.3s ease; cursor: pointer; }
         .menu-item:hover { background: var(--accent-color); color: white; border-color: var(--accent-color); transform: translateY(-3px); }
         .footer { margin-top: 40px; font-size: 0.8rem; color: #bdc3c7; }
     </style>
@@ -29,13 +29,31 @@
             <a href="#" class="menu-item">📚 学习资料</a>
             <a href="#" class="menu-item">✍️ 个人文章</a>
             <a href="games/snake.html" class="menu-item">🎮 小游戏</a>
-            <a href="#" class="menu-item">📁 资源收藏</a>
+            <div class="menu-item" onclick="accessPrivateVideo()">🎬 内部视频</div>
         </div>
 
         <div class="footer">
             © 2026 Laofujia.com · 基于 GitHub Pages 驱动
         </div>
     </div>
+
+    <script>
+        function accessPrivateVideo() {
+            // 1. 设置你希望家人们输入的“访问暗号”（不是网盘提取码，是进入网页的门槛）
+            const webPassword = "laofujia6301"; 
+            
+            // 2. 这里的链接换成你阿里云盘的分享链接
+            const videoUrl = "https://www.alipan.com/s/asoCYe5H2KZ"; 
+
+            const userInput = prompt("请输入老付家专属访问暗号：");
+
+            if (userInput === webPassword) {
+                alert("验证通过！即将前往阿里云盘。请使用提取码观看。");
+                window.open(videoUrl, '_blank');
+            } else if (userInput !== null) {
+                alert("暗号错误，请联系老付获取！");
+            }
+        }
+    </script>
 </body>
 </html>
-
