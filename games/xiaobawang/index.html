@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小霸王游戏机 | 老付家</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-wrap">
+        <!-- Title bar -->
+        <div id="titlebar">
+            <button id="tb-user-btn" class="tb-btn">选择用户</button>
+            <span id="tb-title">小霸王游戏机</span>
+            <div id="tb-right">
+                <span id="tb-timer"></span>
+                <span id="tb-score-display"></span>
+                <button id="tb-back-btn" class="tb-btn">← 返回</button>
+                <a href="../../index.html" class="tb-btn tb-home-btn">🏠 老付家</a>
+            </div>
+        </div>
+
+        <!-- Overlay screens -->
+        <div id="screen-container">
+            <div id="screen-user-select" class="screen"></div>
+            <div id="screen-icon-select" class="screen"></div>
+            <div id="screen-main-menu" class="screen"></div>
+            <div id="screen-time-select" class="screen"></div>
+            <div id="screen-cr-start" class="screen"></div>
+            <div id="screen-cr-gameover" class="screen"></div>
+        </div>
+
+        <!-- Game canvas (hidden until gameplay) -->
+        <canvas id="gameCanvas" width="800" height="556"></canvas>
+    </div>
+
+    <script src="main.js"></script>
+    <script src="games/carrace.js"></script>
+</body>
+</html>
