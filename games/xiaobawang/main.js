@@ -16,7 +16,7 @@ const GAMES = [
     { key: 'balloon',  title: '气球打字', desc: '气球飘上来，打字击破它！', disabled: true  },
     { key: 'trekjump', title: '恐龙跳跳', desc: '跳过障碍，越跑越快！',     disabled: true  },
     { key: 'carrace',  title: '赛车竞速', desc: '躲开敌车，冲向终点！',     disabled: false },
-    { key: 'frogjump', title: '青蛙跳台', desc: '跳上平台，收集宝石！',     disabled: true  },
+    { key: 'frogjump', title: '青蛙跳台', desc: '跳上平台，收集宝石！',     disabled: false },
 ];
 
 const LS_AVATARS = 'xbw_user_avatars';
@@ -54,7 +54,7 @@ const tbScoreDisplay  = document.getElementById('tb-score-display');
 const tbBackBtn       = document.getElementById('tb-back-btn');
 
 const screens = {};
-['user-select','icon-select','main-menu','time-select','cr-start','cr-gameover'].forEach(id => {
+['user-select','icon-select','main-menu','time-select','cr-start','cr-gameover','fj-start','fj-gameover'].forEach(id => {
     screens[id] = document.getElementById('screen-' + id);
 });
 
@@ -83,6 +83,9 @@ function setState(newState) {
     else if (newState === 'cr-start')     buildCrStart();
     else if (newState === 'cr-playing')   { showCanvas(); startCarRace(); }
     else if (newState === 'cr-gameover')  buildCrGameover();
+    else if (newState === 'fj-start')     buildFjStart();
+    else if (newState === 'fj-playing')   { showCanvas(); startFrogJump(); }
+    else if (newState === 'fj-gameover')  buildFjGameover();
 }
 
 // ── Title bar ──
@@ -114,6 +117,13 @@ function updateTitleBar() {
             addScore('carrace', currentScore, currentUser || '?');
             setState('cr-gameover');
         }
+        else if (state === 'fj-start')     setState('main-menu');
+        else if (state === 'fj-playing') {
+            if (window.frogJumpInstance) currentScore = window.frogJumpInstance.score;
+            stopCurrentGame();
+            addScore('frogjump', currentScore, currentUser || '?');
+            setState('fj-gameover');
+        }
         else setState('main-menu');
     };
 
@@ -129,7 +139,7 @@ function updateTitleBar() {
     }
 
     // Score display (gameplay only)
-    if (state === 'cr-playing') {
+    if (state === 'cr-playing' || state === 'fj-playing') {
         tbScoreDisplay.textContent = `得分: ${currentScore}`;
         tbScoreDisplay.style.display = '';
     } else {
@@ -165,6 +175,10 @@ function stopCurrentGame() {
     if (window.carRaceInstance) {
         window.carRaceInstance.stop();
         window.carRaceInstance = null;
+    }
+    if (window.frogJumpInstance) {
+        window.frogJumpInstance.stop();
+        window.frogJumpInstance = null;
     }
 }
 
@@ -575,7 +589,8 @@ function buildTimeSelect() {
         btn.textContent = label;
         btn.addEventListener('click', () => {
             startSession(secs);
-            if (pendingGame === 'carrace') setState('cr-start');
+            if      (pendingGame === 'carrace')  setState('cr-start');
+            else if (pendingGame === 'frogjump') setState('fj-start');
         });
         grid.appendChild(btn);
     });
@@ -679,7 +694,98 @@ function buildCrGameover() {
     showScreen('cr-gameover');
 }
 
+// ── FrogJump screens ──
+
+function buildFjStart() {
+    const sc = screens['fj-start'];
+    sc.innerHTML = '';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = '🐸 青蛙跳台';
+    h2.style.color = 'var(--success)';
+    h2.style.fontSize = '1.8rem';
+
+    const hint = document.createElement('p');
+    hint.textContent = '按 SPACE 跳上平台，收集宝石，躲开红色障碍！';
+    hint.style.color = 'var(--text-dim)';
+
+    const info = document.createElement('div');
+    info.style.cssText = 'display:flex;flex-direction:column;gap:6px;font-size:0.82rem;color:var(--text-dim);text-align:center';
+    info.innerHTML =
+        '<span>🟤 普通平台 · <span style="color:#e06838">🔴 危险平台 (-1❤)</span></span>' +
+        '<span><span style="color:#50d868">🟢 奖励平台 (+1❤)</span> · <span style="color:#60b8e8">🔵 移动平台</span></span>' +
+        '<span>💎 蓝宝石 +500 · 💎 红宝石 +1000</span>';
+
+    const goBtn = document.createElement('button');
+    goBtn.className = 'big-play-btn';
+    goBtn.textContent = '开始！';
+    goBtn.addEventListener('click', () => setState('fj-playing'));
+
+    sc.append(h2, hint, info, goBtn);
+    showScreen('fj-start');
+}
+
+function buildFjGameover() {
+    const sc = screens['fj-gameover'];
+    sc.innerHTML = '';
+    const score = currentScore;
+    const canPlay = sessionTimeLeft > 0;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'gameover-wrap';
+
+    const left = document.createElement('div');
+    left.className = 'gameover-left';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = '游戏结束';
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'score-display';
+    scoreEl.textContent = score;
+    const scoreLbl = document.createElement('div');
+    scoreLbl.className = 'score-label';
+    scoreLbl.textContent = '本次得分';
+
+    const btns = document.createElement('div');
+    btns.className = 'gameover-btns';
+    const againBtn = document.createElement('button');
+    againBtn.className = 'big-play-btn';
+    againBtn.textContent = '再来一局';
+    againBtn.disabled = !canPlay;
+    if (!canPlay) againBtn.style.cssText = 'background:var(--border);color:var(--text-dim);cursor:not-allowed';
+    else againBtn.addEventListener('click', () => setState('fj-start'));
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'option-btn';
+    menuBtn.textContent = '返回菜单';
+    menuBtn.addEventListener('click', () => setState('main-menu'));
+    btns.append(againBtn, menuBtn);
+
+    left.append(h2, scoreEl, scoreLbl, btns);
+    if (!canPlay) {
+        const warn = document.createElement('p');
+        warn.style.cssText = 'color:var(--danger);font-size:0.78rem;text-align:center';
+        warn.textContent = '⏱ 游戏时间已结束，返回菜单可重新计时';
+        left.appendChild(warn);
+    }
+
+    wrap.append(left, buildLeaderboard('frogjump', score, currentUser || '?'));
+    sc.appendChild(wrap);
+    showScreen('fj-gameover');
+}
+
 // ── Game callbacks ──
+window.onFrogJumpOver = function(score) {
+    currentScore = score;
+    pauseTimer();
+    addScore('frogjump', score, currentUser || '?');
+    setState('fj-gameover');
+};
+
+window.onFrogJumpScore = function(score) {
+    currentScore = score;
+    tbScoreDisplay.textContent = '得分: ' + score;
+};
+
 window.onCarRaceOver = function(score) {
     currentScore = score;
     pauseTimer();
