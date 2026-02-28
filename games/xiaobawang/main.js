@@ -655,7 +655,7 @@ function buildCrStart() {
 
     const goBtn = document.createElement('button');
     goBtn.className = 'big-play-btn';
-    goBtn.textContent = '开始！';
+    goBtn.textContent = '开始！（或按空格）';
     goBtn.addEventListener('click', () => { window._crLanes = laneCount; setState('cr-playing'); });
 
     sc.append(h2, hint, laneWrap, goBtn);
@@ -734,7 +734,7 @@ function buildFjStart() {
 
     const goBtn = document.createElement('button');
     goBtn.className = 'big-play-btn';
-    goBtn.textContent = '开始！';
+    goBtn.textContent = '开始！（或按空格）';
     goBtn.addEventListener('click', () => setState('fj-playing'));
 
     sc.append(h2, hint, info, goBtn);
@@ -794,6 +794,7 @@ function buildFjGameover() {
 function buildSkStart() {
     const sc = screens['sk-start'];
     sc.innerHTML = '';
+    let skSpeed = 200;
 
     const h2 = document.createElement('h2');
     h2.textContent = '🐍 贪吃蛇';
@@ -808,12 +809,32 @@ function buildSkStart() {
     info.style.cssText = 'font-size:0.82rem;color:var(--text-dim);text-align:center';
     info.innerHTML = '<span>🍎 每个食物 +10 分 · 每 50 分加速</span><br><span>撞墙或咬到自己就 Game Over！</span>';
 
+    const speedWrap = document.createElement('div');
+    speedWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:10px';
+    const speedLabel = document.createElement('p');
+    speedLabel.textContent = '选择速度：';
+    speedLabel.style.color = 'var(--text-dim)';
+    const optRow = document.createElement('div');
+    optRow.className = 'option-row';
+    [[200,'慢速'],[150,'普通'],[100,'快速']].forEach(([ms, label]) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn' + (ms === 200 ? ' active' : '');
+        btn.textContent = label;
+        btn.addEventListener('click', () => {
+            skSpeed = ms;
+            optRow.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+        optRow.appendChild(btn);
+    });
+    speedWrap.append(speedLabel, optRow);
+
     const goBtn = document.createElement('button');
     goBtn.className = 'big-play-btn';
-    goBtn.textContent = '开始！';
-    goBtn.addEventListener('click', () => setState('sk-playing'));
+    goBtn.textContent = '开始！（或按空格）';
+    goBtn.addEventListener('click', () => { window._skSpeed = skSpeed; setState('sk-playing'); });
 
-    sc.append(h2, hint, info, goBtn);
+    sc.append(h2, hint, info, speedWrap, goBtn);
     showScreen('sk-start');
 }
 
@@ -905,6 +926,34 @@ window.onCarRaceScore = function(score) {
 // ── Expose timer functions to game modules ──
 window.activateTimer = activateTimer;
 window.pauseTimer    = pauseTimer;
+
+// ── Timer overlay drawn on game canvas ──
+window.drawTimerOverlay = function(ctx) {
+    if (sessionTimeLeft <= 0) return;
+    const m = Math.floor(sessionTimeLeft / 60);
+    const s = sessionTimeLeft % 60;
+    const text = m + ':' + s.toString().padStart(2, '0');
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(8, 8, 80, 28);
+    ctx.fillStyle = sessionTimeLeft <= 15 ? '#f85149' : '#58a6ff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(text, 18, 28);
+    ctx.restore();
+};
+
+// ── Space to start ──
+document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.code === 'Space') {
+        if (state === 'cr-start' || state === 'fj-start' || state === 'sk-start') {
+            e.preventDefault();
+            const sc = screens[state];
+            const btn = sc.querySelector('.big-play-btn');
+            if (btn && !btn.disabled) btn.click();
+        }
+    }
+});
 
 // ── Fullscreen & Scaling ──
 const gameWrap = document.getElementById('game-wrap');

@@ -179,6 +179,9 @@ class CarRace {
             ctx.fillText('← → 换道', this.playerLane < 2 ? roadX + roadW/2 + 60 : roadX + roadW/2 - 60, H - 20);
             ctx.textAlign = 'left';
         }
+
+        // Timer overlay
+        if (window.drawTimerOverlay) window.drawTimerOverlay(ctx);
     }
 
     // Top-down car: isPlayer = front at top; enemy = front at bottom (facing player)

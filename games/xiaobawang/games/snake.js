@@ -4,7 +4,7 @@
 // ================================================================
 
 class SnakeGame {
-    constructor(canvas) {
+    constructor(canvas, initialSpeed) {
         this.canvas = canvas;
         this.ctx    = canvas.getContext('2d');
         this.W = 800;
@@ -25,7 +25,7 @@ class SnakeGame {
         this.nextDir = { x: 1, y: 0 };
         this.food  = this._randomFood();
         this.score = 0;
-        this.speed = 100; // ms per tick (lower = faster)
+        this.speed = initialSpeed || 200; // ms per tick (lower = faster)
 
         this.running = false;
         this._interval = null;
@@ -100,8 +100,8 @@ class SnakeGame {
             this.food = this._randomFood();
             if (window.onSnakeScore) window.onSnakeScore(this.score);
             // Speed up slightly every 50 points
-            if (this.score % 50 === 0 && this.speed > 50) {
-                this.speed -= 5;
+            if (this.score % 50 === 0 && this.speed > 60) {
+                this.speed -= 10;
                 clearInterval(this._interval);
                 this._interval = setInterval(() => this._tick(), this.speed);
             }
@@ -209,6 +209,9 @@ class SnakeGame {
             ctx.fillText('方向键 / WASD 控制方向', W / 2, offsetY - 8);
             ctx.textAlign = 'left';
         }
+
+        // Timer overlay
+        if (window.drawTimerOverlay) window.drawTimerOverlay(ctx);
     }
 
     _roundRect(ctx, x, y, w, h, r) {
@@ -229,8 +232,9 @@ class SnakeGame {
 // ── Entry point called by main.js ──
 function startSnake() {
     const canvas = document.getElementById('gameCanvas');
+    const speed = window._skSpeed || 200;
     if (window.snakeInstance) window.snakeInstance.stop();
-    const game = new SnakeGame(canvas);
+    const game = new SnakeGame(canvas, speed);
     window.snakeInstance = game;
     game.start();
 }

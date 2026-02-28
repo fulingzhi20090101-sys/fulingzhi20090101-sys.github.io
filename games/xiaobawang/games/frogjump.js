@@ -395,6 +395,9 @@ class FrogJump {
         ctx.fillStyle = '#aaa';
         ctx.font = '12px monospace';
         ctx.fillText('SPD ' + this.speed.toFixed(1), W - 118, H - 18);
+
+        // Timer overlay
+        if (window.drawTimerOverlay) window.drawTimerOverlay(ctx);
     }
 
     _drawPlatform(p) {
