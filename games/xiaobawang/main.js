@@ -17,6 +17,7 @@ const GAMES = [
     { key: 'trekjump', title: '恐龙跳跳', desc: '跳过障碍，越跑越快！',     disabled: true  },
     { key: 'carrace',  title: '赛车竞速', desc: '躲开敌车，冲向终点！',     disabled: false },
     { key: 'frogjump', title: '青蛙跳台', desc: '跳上平台，收集宝石！',     disabled: false },
+    { key: 'snake',    title: '贪吃蛇',   desc: '吃掉食物，别咬到自己！',   disabled: false },
 ];
 
 const LS_AVATARS = 'xbw_user_avatars';
@@ -54,7 +55,7 @@ const tbScoreDisplay  = document.getElementById('tb-score-display');
 const tbBackBtn       = document.getElementById('tb-back-btn');
 
 const screens = {};
-['user-select','icon-select','main-menu','time-select','cr-start','cr-gameover','fj-start','fj-gameover'].forEach(id => {
+['user-select','icon-select','main-menu','time-select','cr-start','cr-gameover','fj-start','fj-gameover','sk-start','sk-gameover'].forEach(id => {
     screens[id] = document.getElementById('screen-' + id);
 });
 
@@ -86,6 +87,9 @@ function setState(newState) {
     else if (newState === 'fj-start')     buildFjStart();
     else if (newState === 'fj-playing')   { showCanvas(); startFrogJump(); }
     else if (newState === 'fj-gameover')  buildFjGameover();
+    else if (newState === 'sk-start')     buildSkStart();
+    else if (newState === 'sk-playing')   { showCanvas(); startSnake(); }
+    else if (newState === 'sk-gameover')  buildSkGameover();
 }
 
 // ── Title bar ──
@@ -124,6 +128,13 @@ function updateTitleBar() {
             addScore('frogjump', currentScore, currentUser || '?');
             setState('fj-gameover');
         }
+        else if (state === 'sk-start')     setState('main-menu');
+        else if (state === 'sk-playing') {
+            if (window.snakeInstance) currentScore = window.snakeInstance.score;
+            stopCurrentGame();
+            addScore('snake', currentScore, currentUser || '?');
+            setState('sk-gameover');
+        }
         else setState('main-menu');
     };
 
@@ -139,7 +150,7 @@ function updateTitleBar() {
     }
 
     // Score display (gameplay only)
-    if (state === 'cr-playing' || state === 'fj-playing') {
+    if (state === 'cr-playing' || state === 'fj-playing' || state === 'sk-playing') {
         tbScoreDisplay.textContent = `得分: ${currentScore}`;
         tbScoreDisplay.style.display = '';
     } else {
@@ -179,6 +190,10 @@ function stopCurrentGame() {
     if (window.frogJumpInstance) {
         window.frogJumpInstance.stop();
         window.frogJumpInstance = null;
+    }
+    if (window.snakeInstance) {
+        window.snakeInstance.stop();
+        window.snakeInstance = null;
     }
 }
 
@@ -591,6 +606,7 @@ function buildTimeSelect() {
             startSession(secs);
             if      (pendingGame === 'carrace')  setState('cr-start');
             else if (pendingGame === 'frogjump') setState('fj-start');
+            else if (pendingGame === 'snake')    setState('sk-start');
         });
         grid.appendChild(btn);
     });
@@ -773,7 +789,95 @@ function buildFjGameover() {
     showScreen('fj-gameover');
 }
 
+// ── Snake screens ──
+
+function buildSkStart() {
+    const sc = screens['sk-start'];
+    sc.innerHTML = '';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = '🐍 贪吃蛇';
+    h2.style.color = 'var(--success)';
+    h2.style.fontSize = '1.8rem';
+
+    const hint = document.createElement('p');
+    hint.textContent = '用方向键或 WASD 控制蛇的方向，吃掉食物变长！';
+    hint.style.color = 'var(--text-dim)';
+
+    const info = document.createElement('div');
+    info.style.cssText = 'font-size:0.82rem;color:var(--text-dim);text-align:center';
+    info.innerHTML = '<span>🍎 每个食物 +10 分 · 每 50 分加速</span><br><span>撞墙或咬到自己就 Game Over！</span>';
+
+    const goBtn = document.createElement('button');
+    goBtn.className = 'big-play-btn';
+    goBtn.textContent = '开始！';
+    goBtn.addEventListener('click', () => setState('sk-playing'));
+
+    sc.append(h2, hint, info, goBtn);
+    showScreen('sk-start');
+}
+
+function buildSkGameover() {
+    const sc = screens['sk-gameover'];
+    sc.innerHTML = '';
+    const score = currentScore;
+    const canPlay = sessionTimeLeft > 0;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'gameover-wrap';
+
+    const left = document.createElement('div');
+    left.className = 'gameover-left';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = '游戏结束';
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'score-display';
+    scoreEl.textContent = score;
+    const scoreLbl = document.createElement('div');
+    scoreLbl.className = 'score-label';
+    scoreLbl.textContent = '本次得分';
+
+    const btns = document.createElement('div');
+    btns.className = 'gameover-btns';
+    const againBtn = document.createElement('button');
+    againBtn.className = 'big-play-btn';
+    againBtn.textContent = '再来一局';
+    againBtn.disabled = !canPlay;
+    if (!canPlay) againBtn.style.cssText = 'background:var(--border);color:var(--text-dim);cursor:not-allowed';
+    else againBtn.addEventListener('click', () => setState('sk-start'));
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'option-btn';
+    menuBtn.textContent = '返回菜单';
+    menuBtn.addEventListener('click', () => setState('main-menu'));
+    btns.append(againBtn, menuBtn);
+
+    left.append(h2, scoreEl, scoreLbl, btns);
+    if (!canPlay) {
+        const warn = document.createElement('p');
+        warn.style.cssText = 'color:var(--danger);font-size:0.78rem;text-align:center';
+        warn.textContent = '⏱ 游戏时间已结束，返回菜单可重新计时';
+        left.appendChild(warn);
+    }
+
+    wrap.append(left, buildLeaderboard('snake', score, currentUser || '?'));
+    sc.appendChild(wrap);
+    showScreen('sk-gameover');
+}
+
 // ── Game callbacks ──
+window.onSnakeOver = function(score) {
+    currentScore = score;
+    pauseTimer();
+    addScore('snake', score, currentUser || '?');
+    setState('sk-gameover');
+};
+
+window.onSnakeScore = function(score) {
+    currentScore = score;
+    tbScoreDisplay.textContent = '得分: ' + score;
+};
+
 window.onFrogJumpOver = function(score) {
     currentScore = score;
     pauseTimer();
@@ -801,6 +905,31 @@ window.onCarRaceScore = function(score) {
 // ── Expose timer functions to game modules ──
 window.activateTimer = activateTimer;
 window.pauseTimer    = pauseTimer;
+
+// ── Fullscreen & Scaling ──
+const gameWrap = document.getElementById('game-wrap');
+const fsBtn    = document.getElementById('tb-fs-btn');
+
+function resizeGame() {
+    const scale = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+    gameWrap.style.setProperty('--scale', scale);
+}
+
+fsBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+        gameWrap.requestFullscreen().catch(() => {});
+    } else {
+        document.exitFullscreen();
+    }
+});
+
+document.addEventListener('fullscreenchange', () => {
+    // Small delay so the browser finishes layout before we measure
+    setTimeout(resizeGame, 50);
+});
+
+window.addEventListener('resize', resizeGame);
+resizeGame(); // initial scale
 
 // ── Init ──
 updateTitleBar();

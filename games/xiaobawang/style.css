@@ -22,6 +22,7 @@ body {
     min-height: 100vh;
     font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
     color: var(--text);
+    overflow: hidden;
 }
 
 #game-wrap {
@@ -32,6 +33,16 @@ body {
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+    transform: scale(var(--scale, 1));
+    transform-origin: center center;
+    transition: transform 0.2s ease;
+}
+
+/* Fullscreen button */
+.tb-fs-btn {
+    font-size: 1rem;
+    padding: 2px 8px;
+    line-height: 1;
 }
 
 /* ── Title bar ── */
