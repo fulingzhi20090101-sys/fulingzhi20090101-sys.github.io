@@ -504,6 +504,16 @@ function avRobot(ctx, cx, cy, r) {
     }
 }
 
+// ── Time display helper ──
+function buildTimeInfo(label) {
+    const el = document.createElement('p');
+    const m = Math.floor(sessionTimeLeft / 60);
+    const s = sessionTimeLeft % 60;
+    el.textContent = label + ' ' + m + ':' + s.toString().padStart(2, '0');
+    el.style.cssText = 'color:var(--accent);font-size:0.9rem;font-weight:bold';
+    return el;
+}
+
 // ================================================================
 // Screen builders
 // ================================================================
@@ -658,7 +668,7 @@ function buildCrStart() {
     goBtn.textContent = '开始！（或按空格）';
     goBtn.addEventListener('click', () => { window._crLanes = laneCount; setState('cr-playing'); });
 
-    sc.append(h2, hint, laneWrap, goBtn);
+    sc.append(h2, hint, laneWrap, buildTimeInfo('游戏时长:'), goBtn);
     showScreen('cr-start');
 }
 
@@ -687,7 +697,7 @@ function buildCrGameover() {
     btns.className = 'gameover-btns';
     const againBtn = document.createElement('button');
     againBtn.className = 'big-play-btn';
-    againBtn.textContent = '再来一局';
+    againBtn.textContent = canPlay ? '再来一局（空格）' : '再来一局';
     againBtn.disabled = !canPlay;
     if (!canPlay) againBtn.style.cssText = 'background:var(--border);color:var(--text-dim);cursor:not-allowed';
     else againBtn.addEventListener('click', () => setState('cr-start'));
@@ -698,7 +708,9 @@ function buildCrGameover() {
     btns.append(againBtn, menuBtn);
 
     left.append(h2, scoreEl, scoreLbl, btns);
-    if (!canPlay) {
+    if (canPlay) {
+        left.appendChild(buildTimeInfo('剩余时间:'));
+    } else {
         const warn = document.createElement('p');
         warn.style.cssText = 'color:var(--danger);font-size:0.78rem;text-align:center';
         warn.textContent = '⏱ 游戏时间已结束，返回菜单可重新计时';
@@ -737,7 +749,7 @@ function buildFjStart() {
     goBtn.textContent = '开始！（或按空格）';
     goBtn.addEventListener('click', () => setState('fj-playing'));
 
-    sc.append(h2, hint, info, goBtn);
+    sc.append(h2, hint, info, buildTimeInfo('游戏时长:'), goBtn);
     showScreen('fj-start');
 }
 
@@ -766,7 +778,7 @@ function buildFjGameover() {
     btns.className = 'gameover-btns';
     const againBtn = document.createElement('button');
     againBtn.className = 'big-play-btn';
-    againBtn.textContent = '再来一局';
+    againBtn.textContent = canPlay ? '再来一局（空格）' : '再来一局';
     againBtn.disabled = !canPlay;
     if (!canPlay) againBtn.style.cssText = 'background:var(--border);color:var(--text-dim);cursor:not-allowed';
     else againBtn.addEventListener('click', () => setState('fj-start'));
@@ -777,7 +789,9 @@ function buildFjGameover() {
     btns.append(againBtn, menuBtn);
 
     left.append(h2, scoreEl, scoreLbl, btns);
-    if (!canPlay) {
+    if (canPlay) {
+        left.appendChild(buildTimeInfo('剩余时间:'));
+    } else {
         const warn = document.createElement('p');
         warn.style.cssText = 'color:var(--danger);font-size:0.78rem;text-align:center';
         warn.textContent = '⏱ 游戏时间已结束，返回菜单可重新计时';
@@ -834,7 +848,7 @@ function buildSkStart() {
     goBtn.textContent = '开始！（或按空格）';
     goBtn.addEventListener('click', () => { window._skSpeed = skSpeed; setState('sk-playing'); });
 
-    sc.append(h2, hint, info, speedWrap, goBtn);
+    sc.append(h2, hint, info, speedWrap, buildTimeInfo('游戏时长:'), goBtn);
     showScreen('sk-start');
 }
 
@@ -863,7 +877,7 @@ function buildSkGameover() {
     btns.className = 'gameover-btns';
     const againBtn = document.createElement('button');
     againBtn.className = 'big-play-btn';
-    againBtn.textContent = '再来一局';
+    againBtn.textContent = canPlay ? '再来一局（空格）' : '再来一局';
     againBtn.disabled = !canPlay;
     if (!canPlay) againBtn.style.cssText = 'background:var(--border);color:var(--text-dim);cursor:not-allowed';
     else againBtn.addEventListener('click', () => setState('sk-start'));
@@ -874,7 +888,9 @@ function buildSkGameover() {
     btns.append(againBtn, menuBtn);
 
     left.append(h2, scoreEl, scoreLbl, btns);
-    if (!canPlay) {
+    if (canPlay) {
+        left.appendChild(buildTimeInfo('剩余时间:'));
+    } else {
         const warn = document.createElement('p');
         warn.style.cssText = 'color:var(--danger);font-size:0.78rem;text-align:center';
         warn.textContent = '⏱ 游戏时间已结束，返回菜单可重新计时';
@@ -943,10 +959,14 @@ window.drawTimerOverlay = function(ctx) {
     ctx.restore();
 };
 
-// ── Space to start ──
+// ── Space to start / restart ──
 document.addEventListener('keydown', (e) => {
     if (e.key === ' ' || e.code === 'Space') {
-        if (state === 'cr-start' || state === 'fj-start' || state === 'sk-start') {
+        const startOrOver = [
+            'cr-start','fj-start','sk-start',
+            'cr-gameover','fj-gameover','sk-gameover',
+        ];
+        if (startOrOver.includes(state)) {
             e.preventDefault();
             const sc = screens[state];
             const btn = sc.querySelector('.big-play-btn');
