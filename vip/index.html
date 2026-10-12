@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIP 专区 | 老付家</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e67e22;
+            --gold: #f1c40f;
+            --bg-color: #f8f9fa;
+        }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg-color); color: var(--primary-color); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .card { background: white; width: 90%; max-width: 500px; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
+        h1 { font-size: 2.2rem; margin-bottom: 10px; }
+        h1 span { color: var(--gold); }
+        p { color: #7f8c8d; line-height: 1.6; }
+        .users { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
+        .user-card { padding: 25px 15px; background: linear-gradient(135deg, #fff 0%, #fef9e7 100%); border: 2px solid #f9e79f; border-radius: 16px; text-decoration: none; color: var(--primary-color); transition: all 0.3s ease; cursor: pointer; }
+        .user-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(241,196,15,0.3); border-color: var(--gold); }
+        .user-avatar { font-size: 3rem; margin-bottom: 10px; }
+        .user-name { font-size: 1.2rem; font-weight: bold; }
+        .back { display: inline-block; margin-top: 30px; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+        .back:hover { color: var(--accent-color); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1><span>👑</span> VIP 专区</h1>
+        <p>老付家尊贵会员</p>
+
+        <div class="users">
+            <a href="jerry.html" class="user-card">
+                <div class="user-avatar">🧑‍💻</div>
+                <div class="user-name">Jerry</div>
+            </a>
+        </div>
+
+        <a href="../index.html" class="back">← 返回主页</a>
+    </div>
+</body>
+</html>

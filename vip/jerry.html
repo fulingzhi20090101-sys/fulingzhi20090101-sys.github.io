@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jerry 的专属空间 | 老付家</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e67e22;
+            --gold: #f1c40f;
+            --bg-color: #f8f9fa;
+        }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg-color); color: var(--primary-color); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .card { background: white; width: 90%; max-width: 500px; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
+        .avatar { font-size: 5rem; margin-bottom: 10px; }
+        h1 { font-size: 2rem; margin-bottom: 5px; }
+        .badge { display: inline-block; background: linear-gradient(135deg, var(--gold), #f39c12); color: white; padding: 4px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 20px; }
+        .welcome { font-size: 1.1rem; color: #7f8c8d; line-height: 1.8; margin: 20px 0; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 25px 0; }
+        .stat { padding: 15px 5px; background: #fef9e7; border-radius: 12px; }
+        .stat-num { font-size: 1.5rem; font-weight: bold; color: var(--accent-color); }
+        .stat-label { font-size: 0.75rem; color: #7f8c8d; margin-top: 4px; }
+        .back { display: inline-block; margin-top: 25px; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+        .back:hover { color: var(--accent-color); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="avatar">🧑‍💻</div>
+        <h1>Jerry</h1>
+        <div class="badge">👑 VIP 会员</div>
+        <div class="welcome">
+            欢迎回来，Jerry！<br>
+            这里是你的专属空间。<br>
+            更多精彩内容即将上线，敬请期待！
+        </div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-num">1</div>
+                <div class="stat-label">会员等级</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">∞</div>
+                <div class="stat-label">游戏次数</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">⭐</div>
+                <div class="stat-label">专属特权</div>
+            </div>
+        </div>
+        <a href="index.html" class="back">← 返回 VIP 专区</a>
+    </div>
+</body>
+</html>
