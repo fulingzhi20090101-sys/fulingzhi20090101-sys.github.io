@@ -5,51 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jerry 的专属空间 | 老付家</title>
     <style>
-        :root {
-            --primary-color: #2c3e50;
-            --accent-color: #e67e22;
-            --gold: #f1c40f;
-            --bg-color: #f8f9fa;
-        }
-        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg-color); color: var(--primary-color); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .card { background: white; width: 90%; max-width: 500px; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
-        .avatar { font-size: 5rem; margin-bottom: 10px; }
-        h1 { font-size: 2rem; margin-bottom: 5px; }
-        .badge { display: inline-block; background: linear-gradient(135deg, var(--gold), #f39c12); color: white; padding: 4px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 20px; }
-        .welcome { font-size: 1.1rem; color: #7f8c8d; line-height: 1.8; margin: 20px 0; }
-        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 25px 0; }
+        :root { --primary: #2c3e50; --accent: #e67e22; --gold: #f1c40f; --bg: #f8f9fa; }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--primary); margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .page { width: 90%; max-width: 500px; }
+        .card { background: white; padding: 35px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; margin-bottom: 20px; }
+        .profile .avatar { font-size: 5rem; cursor: pointer; transition: transform 0.3s; }
+        .profile .avatar:hover { transform: scale(1.1); }
+        .profile h1 { font-size: 2rem; margin: 10px 0 5px; }
+        .badge { display: inline-block; background: linear-gradient(135deg, var(--gold), #f39c12); color: white; padding: 4px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+        .avatar-picker { display: none; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
+        .avatar-picker.active { display: flex; }
+        .avatar-picker span { font-size: 2.2rem; cursor: pointer; padding: 8px; border-radius: 12px; transition: all 0.2s; }
+        .avatar-picker span:hover { background: #fef9e7; transform: scale(1.15); }
+        .avatar-picker span.selected { background: #fef9e7; border: 2px solid var(--gold); }
+        .avatar-hint { color: #95a5a6; font-size: 0.8rem; margin-top: 8px; }
+        .section-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         .stat { padding: 15px 5px; background: #fef9e7; border-radius: 12px; }
-        .stat-num { font-size: 1.5rem; font-weight: bold; color: var(--accent-color); }
+        .stat-num { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
         .stat-label { font-size: 0.75rem; color: #7f8c8d; margin-top: 4px; }
-        .back { display: inline-block; margin-top: 25px; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
-        .back:hover { color: var(--accent-color); }
+        .welcome { color: #7f8c8d; line-height: 1.8; margin: 20px 0 0; }
+        .back { display: inline-block; margin-top: 20px; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+        .back:hover { color: var(--accent); }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+        .toast.show { opacity: 1; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="avatar">🧑‍💻</div>
-        <h1>Jerry</h1>
-        <div class="badge">👑 VIP 会员</div>
-        <div class="welcome">
-            欢迎回来，Jerry！<br>
-            这里是你的专属空间。<br>
-            更多精彩内容即将上线，敬请期待！
+    <div class="page">
+        <div class="card profile">
+            <div class="avatar" id="currentAvatar" onclick="togglePicker()">🧑‍💻</div>
+            <h1>Jerry</h1>
+            <div class="badge">👑 VIP 管理员</div>
+            <div class="avatar-picker" id="avatarPicker"></div>
+            <div class="avatar-hint">点击头像更换（每天可换一次）</div>
         </div>
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-num">1</div>
-                <div class="stat-label">会员等级</div>
+
+        <div class="card">
+            <div class="section-title">📊 管理面板</div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-num">3</div>
+                    <div class="stat-label">VIP 会员</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">∞</div>
+                    <div class="stat-label">全部权限</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">⭐</div>
+                    <div class="stat-label">管理员</div>
+                </div>
             </div>
-            <div class="stat">
-                <div class="stat-num">∞</div>
-                <div class="stat-label">游戏次数</div>
-            </div>
-            <div class="stat">
-                <div class="stat-num">⭐</div>
-                <div class="stat-label">专属特权</div>
-            </div>
+            <p class="welcome">欢迎回来，Jerry！<br>更多管理功能即将上线。</p>
         </div>
-        <a href="index.html" class="back">← 返回 VIP 专区</a>
+
+        <div style="text-align:center">
+            <a href="index.html" class="back" onclick="sessionStorage.removeItem('vip_auth_jerry')">🚪 退出登录</a>
+        </div>
     </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const USER_KEY = 'vip_jerry';
+        const AVATARS = ['🧑‍💻','👨‍💼','🦸','🧙','🤖','👾','🐉','🦅','🐯','🐵','🦊','🐼','🎯','🏆','💎','🔥'];
+
+        function init() {
+            try {
+                if (sessionStorage.getItem('vip_auth_jerry') !== '1') {
+                    window.location.href = 'index.html';
+                    return;
+                }
+            } catch(e) {}
+            loadAvatar();
+            buildPicker();
+        }
+
+        function loadAvatar() {
+            try {
+                const saved = localStorage.getItem(USER_KEY + '_avatar');
+                if (saved) document.getElementById('currentAvatar').textContent = saved;
+            } catch(e) {}
+        }
+
+        function canChangeToday() {
+            try {
+                const last = localStorage.getItem(USER_KEY + '_avatar_date');
+                if (!last) return true;
+                const today = new Date().toISOString().slice(0, 10);
+                return last !== today;
+            } catch(e) { return true; }
+        }
+
+        function buildPicker() {
+            const picker = document.getElementById('avatarPicker');
+            const current = document.getElementById('currentAvatar').textContent;
+            picker.innerHTML = '';
+            AVATARS.forEach(a => {
+                const span = document.createElement('span');
+                span.textContent = a;
+                if (a === current) span.classList.add('selected');
+                span.onclick = () => selectAvatar(a);
+                picker.appendChild(span);
+            });
+        }
+
+        function togglePicker() {
+            document.getElementById('avatarPicker').classList.toggle('active');
+        }
+
+        function selectAvatar(emoji) {
+            if (!canChangeToday()) {
+                showToast('今天已经换过头像了，明天再来吧！');
+                return;
+            }
+            document.getElementById('currentAvatar').textContent = emoji;
+            try {
+                localStorage.setItem(USER_KEY + '_avatar', emoji);
+                localStorage.setItem(USER_KEY + '_avatar_date', new Date().toISOString().slice(0, 10));
+            } catch(e) {}
+            document.getElementById('avatarPicker').classList.remove('active');
+            buildPicker();
+            showToast('头像已更新！');
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        init();
+    </script>
 </body>
 </html>

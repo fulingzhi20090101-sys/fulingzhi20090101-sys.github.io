@@ -16,13 +16,28 @@
         h1 { font-size: 2.2rem; margin-bottom: 10px; }
         h1 span { color: var(--gold); }
         p { color: #7f8c8d; line-height: 1.6; }
-        .users { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
+        .users { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 30px; }
         .user-card { padding: 25px 15px; background: linear-gradient(135deg, #fff 0%, #fef9e7 100%); border: 2px solid #f9e79f; border-radius: 16px; text-decoration: none; color: var(--primary-color); transition: all 0.3s ease; cursor: pointer; }
         .user-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(241,196,15,0.3); border-color: var(--gold); }
         .user-avatar { font-size: 3rem; margin-bottom: 10px; }
-        .user-name { font-size: 1.2rem; font-weight: bold; }
+        .user-name { font-size: 1.1rem; font-weight: bold; }
         .back { display: inline-block; margin-top: 30px; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
         .back:hover { color: var(--accent-color); }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; padding: 35px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .modal h2 { margin: 0 0 5px; font-size: 1.3rem; }
+        .modal .modal-avatar { font-size: 3rem; margin-bottom: 10px; }
+        .modal .hint { color: #95a5a6; font-size: 0.85rem; margin-bottom: 20px; }
+        .modal input { width: 100%; padding: 12px 16px; border: 2px solid #ecf0f1; border-radius: 10px; font-size: 1rem; box-sizing: border-box; outline: none; transition: border-color 0.3s; }
+        .modal input:focus { border-color: var(--gold); }
+        .modal .error { color: #e74c3c; font-size: 0.85rem; margin-top: 8px; display: none; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-buttons button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .btn-login { background: linear-gradient(135deg, var(--gold), #f39c12); color: white; }
+        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(241,196,15,0.4); }
+        .btn-cancel { background: #ecf0f1; color: #7f8c8d; }
+        .btn-cancel:hover { background: #dfe6e9; }
     </style>
 </head>
 <body>
@@ -31,13 +46,85 @@
         <p>老付家尊贵会员</p>
 
         <div class="users">
-            <a href="jerry.html" class="user-card">
+            <div class="user-card" onclick="showLogin('zy26')">
+                <div class="user-avatar">🐯</div>
+                <div class="user-name">ZY26</div>
+            </div>
+            <div class="user-card" onclick="showLogin('george')">
+                <div class="user-avatar">🐵</div>
+                <div class="user-name">George</div>
+            </div>
+            <div class="user-card" onclick="showLogin('jerry')">
                 <div class="user-avatar">🧑‍💻</div>
                 <div class="user-name">Jerry</div>
-            </a>
+            </div>
         </div>
 
         <a href="../index.html" class="back">← 返回主页</a>
     </div>
+
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal">
+            <div class="modal-avatar" id="modalAvatar"></div>
+            <h2 id="modalName"></h2>
+            <p class="hint">请输入密码进入专属空间</p>
+            <input type="password" id="passwordInput" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+            <div class="error" id="errorMsg">密码错误，请重试</div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="hideLogin()">取消</button>
+                <button class="btn-login" onclick="doLogin()">登录</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const users = {
+            zy26:   { name: 'ZY26',   avatar: '🐯', hash: 'a1f63458f84619798b9e04a2c92aa3e8843d24c3122b48dc94d3e600976118ac', page: 'zy26.html' },
+            george: { name: 'George', avatar: '🐵', hash: 'df2729150708d7fe40d9a8f853a4836412c1f9e12e433d0478d64e43ef4dfab7', page: 'george.html' },
+            jerry:  { name: 'Jerry',  avatar: '🧑‍💻', hash: 'ed1199f5184936d599ae41056ed03d9987f998f8468e4f456fdd351dffbe9300', page: 'jerry.html' }
+        };
+        let currentUser = null;
+
+        function showLogin(uid) {
+            currentUser = uid;
+            const u = users[uid];
+            document.getElementById('modalAvatar').textContent = u.avatar;
+            document.getElementById('modalName').textContent = u.name;
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('errorMsg').style.display = 'none';
+            document.getElementById('loginModal').classList.add('active');
+            setTimeout(() => document.getElementById('passwordInput').focus(), 100);
+        }
+
+        function hideLogin() {
+            document.getElementById('loginModal').classList.remove('active');
+            currentUser = null;
+        }
+
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function doLogin() {
+            const pw = document.getElementById('passwordInput').value;
+            if (!pw) return;
+            const hash = await sha256(pw);
+            const u = users[currentUser];
+            if (hash === u.hash) {
+                try { sessionStorage.setItem('vip_auth_' + currentUser, '1'); } catch(e) {}
+                window.location.href = u.page;
+            } else {
+                document.getElementById('errorMsg').style.display = 'block';
+                document.getElementById('passwordInput').value = '';
+                document.getElementById('passwordInput').focus();
+            }
+        }
+
+        document.getElementById('loginModal').addEventListener('click', function(e) {
+            if (e.target === this) hideLogin();
+        });
+    </script>
 </body>
 </html>
