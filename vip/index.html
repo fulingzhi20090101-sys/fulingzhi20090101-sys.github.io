@@ -117,7 +117,6 @@
                 window.location.href = u.page;
             } else {
                 document.getElementById('errorMsg').style.display = 'block';
-                document.getElementById('errorMsg').textContent = '密码错误 (输入长度:' + pw.length + ' 计算哈希前6位:' + hash.substring(0,6) + ' 期望前6位:' + u.hash.substring(0,6) + ')';
                 document.getElementById('passwordInput').value = '';
                 document.getElementById('passwordInput').focus();
             }

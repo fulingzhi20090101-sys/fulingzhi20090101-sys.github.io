@@ -54,6 +54,7 @@ class FrogJump {
         this.running = false;
         this._raf    = null;
         this._keyHandler = (e) => this._onKey(e);
+        this._touchHandler = (e) => this._onTouch(e);
         this._lastTime = 0;
 
         this._initPlatforms();
@@ -73,6 +74,8 @@ class FrogJump {
         this.running = true;
         this._lastTime = performance.now();
         document.addEventListener('keydown', this._keyHandler);
+        this.canvas.addEventListener('touchstart', this._touchHandler, { passive: false });
+        this.canvas.addEventListener('mousedown', this._touchHandler);
         if (window.activateTimer) window.activateTimer();
         this._loop();
     }
@@ -80,23 +83,35 @@ class FrogJump {
     stop() {
         this.running = false;
         document.removeEventListener('keydown', this._keyHandler);
+        this.canvas.removeEventListener('touchstart', this._touchHandler);
+        this.canvas.removeEventListener('mousedown', this._touchHandler);
         if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
     }
 
     // ── Input ──
+    _doJump() {
+        if (!this.running) return;
+        if (this.frogVY === 0) {
+            this.frogVY = this.JUMP_VEL;
+            if (this.ridingPlat) {
+                this.frogX = this.FROG_FIXED_X;
+                this.ridingPlat = null;
+            }
+        }
+    }
+
     _onKey(e) {
         if (!this.running) return;
         if (e.key === ' ' || e.code === 'Space') {
             e.preventDefault();
-            if (this.frogVY === 0) {
-                this.frogVY = this.JUMP_VEL;
-                // Release from moving platform
-                if (this.ridingPlat) {
-                    this.frogX = this.FROG_FIXED_X;
-                    this.ridingPlat = null;
-                }
-            }
+            this._doJump();
         }
+    }
+
+    _onTouch(e) {
+        if (!this.running) return;
+        e.preventDefault();
+        this._doJump();
     }
 
     // ── Platform generation ──
@@ -385,7 +400,7 @@ class FrogJump {
             ctx.fillStyle = 'rgba(255,255,100,0.85)';
             ctx.font = '13px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('按 SPACE 跳！', this.frogX, this.frogY - 32);
+            ctx.fillText('按空格/点屏幕 跳！', this.frogX, this.frogY - 32);
             ctx.textAlign = 'left';
         }
 

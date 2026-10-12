@@ -19,9 +19,15 @@
         .avatar-picker span:hover { background: #fef9e7; transform: scale(1.15); }
         .avatar-picker span.selected { background: #fef9e7; border: 2px solid var(--gold); }
         .avatar-hint { color: #95a5a6; font-size: 0.8rem; margin-top: 8px; }
+        .currency-bar { display: flex; gap: 12px; justify-content: center; padding: 12px; background: linear-gradient(135deg, #fef9e7, #fff); border-radius: 12px; margin-top: 15px; }
+        .currency-item { font-size: 0.9rem; cursor: pointer; padding: 4px 10px; border-radius: 8px; }
+        .currency-item.gold { color: #d4a017; font-weight: bold; }
+        .currency-item.silver { color: #7f8c8d; font-weight: bold; }
+        .currency-item.copper { color: #8b4513; font-weight: bold; }
+        .tx-link { color: #3498db; font-size: 0.8rem; cursor: pointer; margin-top: 8px; display: inline-block; }
         .section-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; }
         .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .menu-item { padding: 20px 10px; background: linear-gradient(135deg, #fff, #fef9e7); border: 2px solid #f9e79f; border-radius: 14px; text-decoration: none; color: var(--primary); font-weight: bold; font-size: 1rem; transition: all 0.3s; cursor: pointer; text-align: center; }
+        .menu-item { padding: 20px 10px; background: linear-gradient(135deg, #fff, #fef9e7); border: 2px solid #f9e79f; border-radius: 14px; text-decoration: none; color: var(--primary); font-weight: bold; font-size: 1rem; transition: all 0.3s; cursor: pointer; text-align: center; display: block; }
         .menu-item:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(241,196,15,0.3); border-color: var(--gold); }
         .menu-item .icon { font-size: 2rem; margin-bottom: 8px; }
         .coming-soon { color: #95a5a6; font-size: 0.75rem; margin-top: 4px; }
@@ -39,6 +45,8 @@
             <div class="badge">👑 VIP 会员</div>
             <div class="avatar-picker" id="avatarPicker"></div>
             <div class="avatar-hint" id="avatarHint">点击头像更换（每天可换一次）</div>
+            <div id="currencyBar"></div>
+            <div class="tx-link" onclick="showTransactions('zy26')">📜 查看交易记录</div>
         </div>
 
         <div class="card">
@@ -52,7 +60,7 @@
                 <a href="zy26_game.html" class="menu-item">
                     <div class="icon">🎮</div>
                     游戏
-                    <div class="coming-soon">趣味学习</div>
+                    <div class="coming-soon">青蛙跳·赛车</div>
                 </a>
             </div>
         </div>
@@ -64,6 +72,7 @@
 
     <div class="toast" id="toast"></div>
 
+    <script src="vip_common.js"></script>
     <script>
         const USER_KEY = 'vip_zy26';
         const AVATARS = ['🐯','🦁','🐻','🐼','🐨','🦊','🐰','🐸','🐶','🐱','🦄','🐲','🦅','🐧','🐬','🦖'];
@@ -75,8 +84,10 @@
                     return;
                 }
             } catch(e) {}
+            VipLogin.record('zy26');
             loadAvatar();
             buildPicker();
+            renderCurrencyBar(document.getElementById('currencyBar'), 'zy26');
         }
 
         function loadAvatar() {
@@ -90,8 +101,7 @@
             try {
                 const last = localStorage.getItem(USER_KEY + '_avatar_date');
                 if (!last) return true;
-                const today = new Date().toISOString().slice(0, 10);
-                return last !== today;
+                return last !== new Date().toISOString().slice(0, 10);
             } catch(e) { return true; }
         }
 
@@ -108,15 +118,10 @@
             });
         }
 
-        function togglePicker() {
-            document.getElementById('avatarPicker').classList.toggle('active');
-        }
+        function togglePicker() { document.getElementById('avatarPicker').classList.toggle('active'); }
 
         function selectAvatar(emoji) {
-            if (!canChangeToday()) {
-                showToast('今天已经换过头像了，明天再来吧！');
-                return;
-            }
+            if (!canChangeToday()) { showToast('今天已经换过头像了，明天再来吧！'); return; }
             document.getElementById('currentAvatar').textContent = emoji;
             try {
                 localStorage.setItem(USER_KEY + '_avatar', emoji);

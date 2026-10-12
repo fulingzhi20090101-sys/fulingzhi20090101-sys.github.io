@@ -2,33 +2,175 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZY26 游戏 | 老付家</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --gold: #f1c40f; --bg: #f8f9fa; }
-        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--primary); margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .card { background: white; width: 90%; max-width: 500px; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
-        h1 { font-size: 2rem; margin-bottom: 10px; }
-        .subtitle { color: #95a5a6; margin-bottom: 30px; }
-        .placeholder { padding: 40px 20px; background: #fef9e7; border-radius: 16px; border: 2px dashed #f9e79f; }
-        .placeholder .icon { font-size: 4rem; margin-bottom: 15px; }
-        .placeholder p { color: #7f8c8d; line-height: 1.6; margin: 0; }
-        .back { display: inline-block; margin-top: 25px; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
-        .back:hover { color: var(--accent); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--primary); touch-action: manipulation; }
+        .header { background: white; padding: 12px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 1.2rem; }
+        .header .back { color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+        .currency-bar { display: flex; gap: 12px; justify-content: center; padding: 10px; background: linear-gradient(135deg, #fef9e7, #fff); }
+        .currency-item { font-size: 0.9rem; cursor: pointer; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.8); }
+        .currency-item.gold { color: #d4a017; font-weight: bold; }
+        .currency-item.silver { color: #7f8c8d; font-weight: bold; }
+        .currency-item.copper { color: #8b4513; font-weight: bold; }
+        .game-list { max-width: 500px; margin: 20px auto; padding: 0 16px; }
+        .game-card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.3s; border: 2px solid transparent; }
+        .game-card:hover, .game-card:active { border-color: var(--gold); transform: translateY(-2px); }
+        .game-card .icon { font-size: 2.5rem; float: left; margin-right: 15px; }
+        .game-card .title { font-size: 1.1rem; font-weight: bold; margin-bottom: 4px; }
+        .game-card .desc { color: #7f8c8d; font-size: 0.85rem; }
+        .game-card .cost { color: #27ae60; font-size: 0.8rem; margin-top: 4px; }
+        .game-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a2e; z-index: 100; }
+        .game-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(0,0,0,0.5); color: white; font-size: 0.9rem; position: absolute; top: 0; left: 0; right: 0; z-index: 10; }
+        .game-toolbar button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 14px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; }
+        #gameCanvas { display: block; width: 100%; height: calc(100% - 40px); margin-top: 40px; }
+        .game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+        .game-over-overlay.active { display: flex; }
+        .game-over-card { background: white; padding: 35px; border-radius: 20px; text-align: center; max-width: 350px; width: 90%; }
+        .game-over-card h2 { margin-bottom: 10px; }
+        .game-over-card .score { font-size: 2rem; color: var(--accent); font-weight: bold; margin: 15px 0; }
+        .game-over-card button { padding: 12px 28px; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; margin: 5px; }
+        .btn-retry { background: var(--gold); color: white; }
+        .btn-quit { background: #ecf0f1; color: #7f8c8d; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+        .toast.show { opacity: 1; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>🎮 游戏</h1>
-        <p class="subtitle">ZY26 的趣味学习</p>
-        <div class="placeholder">
-            <div class="icon">🚧</div>
-            <p>游戏功能正在搭建中……<br>即将推出趣味汉字游戏！<br><br>敬请期待！</p>
+    <div id="menuView">
+        <div class="header">
+            <a href="zy26.html" class="back">← 返回</a>
+            <h1>🎮 ZY26 的游戏</h1>
+            <span></span>
         </div>
-        <a href="zy26.html" class="back">← 返回我的空间</a>
+        <div id="currencyBar"></div>
+        <div class="game-list">
+            <div class="game-card" onclick="launchGame('frogjump')">
+                <div class="icon">🐸</div>
+                <div class="title">青蛙跳台</div>
+                <div class="desc">跳上平台，收集宝石！点屏幕或按空格跳跃。</div>
+                <div class="cost">免费游玩</div>
+            </div>
+            <div class="game-card" onclick="launchGame('carrace')">
+                <div class="icon">🚗</div>
+                <div class="title">赛车竞速</div>
+                <div class="desc">躲开敌车！点屏幕左右或按←→换道。</div>
+                <div class="cost">免费游玩</div>
+            </div>
+        </div>
     </div>
+
+    <div class="game-container" id="gameContainer">
+        <div class="game-toolbar">
+            <button onclick="quitGame()">✕ 退出</button>
+            <span id="gameScore">得分: 0</span>
+        </div>
+        <canvas id="gameCanvas" width="800" height="556"></canvas>
+    </div>
+
+    <div class="game-over-overlay" id="gameOverOverlay">
+        <div class="game-over-card">
+            <h2>游戏结束</h2>
+            <div class="score" id="finalScore">0</div>
+            <p id="rewardMsg"></p>
+            <div style="margin-top:20px">
+                <button class="btn-retry" onclick="retryGame()">再来一局</button>
+                <button class="btn-quit" onclick="backToMenu()">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="vip_common.js"></script>
+    <script src="../games/xiaobawang/games/frogjump.js"></script>
+    <script src="../games/xiaobawang/games/carrace.js"></script>
     <script>
-        try { if (sessionStorage.getItem('vip_auth_zy26') !== '1') window.location.href = 'index.html'; } catch(e) {}
+        const USER_ID = 'zy26';
+        let currentGame = null;
+        let currentGameKey = null;
+
+        function init() {
+            try {
+                if (sessionStorage.getItem('vip_auth_zy26') !== '1') {
+                    window.location.href = 'index.html';
+                    return;
+                }
+            } catch(e) {}
+            VipLogin.record(USER_ID);
+            renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
+        }
+
+        function launchGame(gameKey) {
+            currentGameKey = gameKey;
+            document.getElementById('menuView').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            document.getElementById('gameScore').textContent = '得分: 0';
+
+            const canvas = document.getElementById('gameCanvas');
+            canvas.width = 800;
+            canvas.height = 556;
+
+            VipTime.startTracking(USER_ID, 'game');
+
+            if (gameKey === 'frogjump') {
+                window.onFrogJumpScore = (s) => { document.getElementById('gameScore').textContent = '得分: ' + s; };
+                window.onFrogJumpOver = (s) => gameOver(s);
+                if (window.frogJumpInstance) window.frogJumpInstance.stop();
+                currentGame = new FrogJump(canvas);
+                window.frogJumpInstance = currentGame;
+                currentGame.start();
+            } else if (gameKey === 'carrace') {
+                window._crLanes = 3;
+                window.onCarRaceScore = (s) => { document.getElementById('gameScore').textContent = '得分: ' + s; };
+                window.onCarRaceOver = (s) => gameOver(s);
+                if (window.carRaceInstance) window.carRaceInstance.stop();
+                currentGame = new CarRace(canvas, 3);
+                window.carRaceInstance = currentGame;
+                currentGame.start();
+            }
+        }
+
+        function gameOver(score) {
+            VipTime.stopTracking();
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('rewardMsg').textContent = '暂时免费游玩';
+            document.getElementById('gameOverOverlay').classList.add('active');
+        }
+
+        function retryGame() {
+            document.getElementById('gameOverOverlay').classList.remove('active');
+            if (currentGame) currentGame.stop();
+            launchGame(currentGameKey);
+        }
+
+        function quitGame() {
+            VipTime.stopTracking();
+            if (currentGame) { currentGame.stop(); currentGame = null; }
+            document.getElementById('gameContainer').style.display = 'none';
+            document.getElementById('gameOverOverlay').classList.remove('active');
+            document.getElementById('menuView').style.display = 'block';
+            renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
+        }
+
+        function backToMenu() {
+            document.getElementById('gameOverOverlay').classList.remove('active');
+            quitGame();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        window.activateTimer = function() {};
+        window.drawTimerOverlay = function() {};
+        init();
     </script>
 </body>
 </html>

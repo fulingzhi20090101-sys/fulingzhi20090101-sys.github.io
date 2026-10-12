@@ -34,11 +34,14 @@ class CarRace {
         this._raf       = null;
 
         this._keyHandler = (e) => this._onKey(e);
+        this._touchHandler = (e) => this._onTouch(e);
     }
 
     start() {
         this.running = true;
         document.addEventListener('keydown', this._keyHandler);
+        this.canvas.addEventListener('touchstart', this._touchHandler, { passive: false });
+        this.canvas.addEventListener('mousedown', this._touchHandler);
         if (window.activateTimer) window.activateTimer();
         this._loop();
     }
@@ -46,6 +49,8 @@ class CarRace {
     stop() {
         this.running = false;
         document.removeEventListener('keydown', this._keyHandler);
+        this.canvas.removeEventListener('touchstart', this._touchHandler);
+        this.canvas.removeEventListener('mousedown', this._touchHandler);
         if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
     }
 
@@ -57,6 +62,19 @@ class CarRace {
         } else if (e.key === 'ArrowRight' && this.playerLane < this.laneCount - 1) {
             this.playerLane++;
             e.preventDefault();
+        }
+    }
+
+    _onTouch(e) {
+        if (!this.running) return;
+        e.preventDefault();
+        const rect = this.canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const x = clientX - rect.left;
+        if (x < rect.width / 2) {
+            if (this.playerLane > 0) this.playerLane--;
+        } else {
+            if (this.playerLane < this.laneCount - 1) this.playerLane++;
         }
     }
 
@@ -176,7 +194,7 @@ class CarRace {
             ctx.fillStyle = 'rgba(255,255,255,0.45)';
             ctx.font = '13px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('← → 换道', this.playerLane < 2 ? roadX + roadW/2 + 60 : roadX + roadW/2 - 60, H - 20);
+            ctx.fillText('← → 换道 / 点左右换道', this.playerLane < 2 ? roadX + roadW/2 + 60 : roadX + roadW/2 - 60, H - 20);
             ctx.textAlign = 'left';
         }
 
