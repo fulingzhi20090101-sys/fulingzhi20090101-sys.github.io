@@ -125,6 +125,21 @@
         document.getElementById('loginModal').addEventListener('click', function(e) {
             if (e.target === this) hideLogin();
         });
+
+        function loadSavedAvatars() {
+            try {
+                const cards = document.querySelectorAll('.user-card');
+                const uids = ['zy26', 'george', 'jerry'];
+                cards.forEach((card, i) => {
+                    const saved = localStorage.getItem('vip_' + uids[i] + '_avatar');
+                    if (saved) {
+                        card.querySelector('.user-avatar').textContent = saved;
+                        users[uids[i]].avatar = saved;
+                    }
+                });
+            } catch(e) {}
+        }
+        loadSavedAvatars();
     </script>
 </body>
 </html>
