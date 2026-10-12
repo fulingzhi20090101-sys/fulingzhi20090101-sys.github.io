@@ -44,7 +44,7 @@
             <h1>ZY26</h1>
             <div class="badge">👑 VIP 会员</div>
             <div class="avatar-picker" id="avatarPicker"></div>
-            <div class="avatar-hint" id="avatarHint">点击头像更换（每天可换一次）</div>
+            <div class="avatar-hint" id="avatarHint">点击头像更换（每天可换三次）</div>
             <div id="currencyBar"></div>
             <div class="tx-link" onclick="showTransactions('zy26')">📜 查看交易记录</div>
         </div>
@@ -98,12 +98,27 @@
             } catch(e) {}
         }
 
-        function canChangeToday() {
+        function _avatarChangesLeft() {
             try {
-                const last = localStorage.getItem(USER_KEY + '_avatar_date');
-                if (!last) return true;
-                return last !== new Date().toISOString().slice(0, 10);
-            } catch(e) { return true; }
+                const raw = localStorage.getItem(USER_KEY + '_avatar_changes');
+                if (!raw) return 3;
+                const data = JSON.parse(raw);
+                if (data.date !== new Date().toISOString().slice(0, 10)) return 3;
+                return Math.max(0, 3 - (data.count || 0));
+            } catch(e) { return 3; }
+        }
+
+        function _recordAvatarChange() {
+            try {
+                const today = new Date().toISOString().slice(0, 10);
+                const raw = localStorage.getItem(USER_KEY + '_avatar_changes');
+                let count = 1;
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    if (data.date === today) count = (data.count || 0) + 1;
+                }
+                localStorage.setItem(USER_KEY + '_avatar_changes', JSON.stringify({ date: today, count: count }));
+            } catch(e) {}
         }
 
         function buildPicker() {
@@ -122,15 +137,14 @@
         function togglePicker() { document.getElementById('avatarPicker').classList.toggle('active'); }
 
         function selectAvatar(emoji) {
-            if (!canChangeToday()) { showToast('今天已经换过头像了，明天再来吧！'); return; }
+            const left = _avatarChangesLeft();
+            if (left <= 0) { showToast('今天已经换了3次头像，明天再来吧！'); return; }
             document.getElementById('currentAvatar').textContent = emoji;
-            try {
-                localStorage.setItem(USER_KEY + '_avatar', emoji);
-                localStorage.setItem(USER_KEY + '_avatar_date', new Date().toISOString().slice(0, 10));
-            } catch(e) {}
+            try { localStorage.setItem(USER_KEY + '_avatar', emoji); } catch(e) {}
+            _recordAvatarChange();
             document.getElementById('avatarPicker').classList.remove('active');
             buildPicker();
-            showToast('头像已更新！');
+            showToast('头像已更新！今天还能换 ' + (left - 1) + ' 次');
         }
 
         function showToast(msg) {
