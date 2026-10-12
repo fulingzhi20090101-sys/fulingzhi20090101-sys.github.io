@@ -57,6 +57,20 @@
             <div class="avatar-hint">点击头像更换（每天可换一次）</div>
         </div>
 
+        <div class="card">
+            <div class="section-title">📖 学习与游戏</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                <div style="text-align:center;font-weight:bold;padding:8px;background:#fef9e7;border-radius:10px">ZY26 (P5)</div>
+                <div style="text-align:center;font-weight:bold;padding:8px;background:#fef9e7;border-radius:10px">George (P1)</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <a href="zy26_quiz.html" style="padding:12px;background:#f8f9fa;border-radius:10px;text-align:center;text-decoration:none;color:var(--primary);font-size:0.9rem" onclick="sessionStorage.setItem('vip_auth_zy26','1')">✍️ ZY26做题</a>
+                <a href="george_quiz.html" style="padding:12px;background:#f8f9fa;border-radius:10px;text-align:center;text-decoration:none;color:var(--primary);font-size:0.9rem" onclick="sessionStorage.setItem('vip_auth_george','1')">✍️ George做题</a>
+                <a href="zy26_game.html" style="padding:12px;background:#f8f9fa;border-radius:10px;text-align:center;text-decoration:none;color:var(--primary);font-size:0.9rem" onclick="sessionStorage.setItem('vip_auth_zy26','1')">🎮 ZY26游戏</a>
+                <a href="george_game.html" style="padding:12px;background:#f8f9fa;border-radius:10px;text-align:center;text-decoration:none;color:var(--primary);font-size:0.9rem" onclick="sessionStorage.setItem('vip_auth_george','1')">🎮 George游戏</a>
+            </div>
+        </div>
+
         <div class="card user-info">
             <div class="section-title">👥 用户管理</div>
             <div id="userDashboard"></div>
