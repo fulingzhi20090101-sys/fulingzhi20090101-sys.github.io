@@ -11,7 +11,7 @@
         .header { background: white; padding: 12px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; }
         .header h1 { font-size: 1.2rem; }
         .header .back { color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
-        .currency-bar { display: flex; gap: 12px; justify-content: center; padding: 10px; background: linear-gradient(135deg, #fef9e7, #fff); }
+        .currency-bar { display: flex; gap: 8px; justify-content: center; padding: 10px; background: linear-gradient(135deg, #fef9e7, #fff); flex-wrap: wrap; }
         .currency-item { font-size: 0.9rem; cursor: pointer; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.8); }
         .currency-item.gold { color: #d4a017; font-weight: bold; }
         .currency-item.silver { color: #7f8c8d; font-weight: bold; }
@@ -22,10 +22,23 @@
         .game-card .icon { font-size: 2.5rem; float: left; margin-right: 15px; }
         .game-card .title { font-size: 1.1rem; font-weight: bold; margin-bottom: 4px; }
         .game-card .desc { color: #7f8c8d; font-size: 0.85rem; }
-        .game-card .cost { color: #27ae60; font-size: 0.8rem; margin-top: 4px; }
+        .game-card .cost { color: var(--accent); font-size: 0.8rem; margin-top: 4px; font-weight: bold; }
+        .time-select { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
+        .time-select.active { display: flex; }
+        .time-card { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 380px; width: 90%; }
+        .time-card h3 { margin-bottom: 15px; }
+        .time-option { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; margin: 8px 0; background: #f8f9fa; border: 2px solid #ecf0f1; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+        .time-option:hover, .time-option:active { border-color: var(--gold); background: #fef9e7; }
+        .time-option.disabled { opacity: 0.4; cursor: not-allowed; }
+        .time-option .time-label { font-weight: bold; font-size: 1.1rem; }
+        .time-option .time-cost { color: var(--accent); font-weight: bold; }
+        .time-option .time-cost.expensive { color: #e74c3c; }
+        .time-info { color: #95a5a6; font-size: 0.8rem; margin-top: 10px; }
+        .time-cancel { margin-top: 15px; color: #95a5a6; border: none; background: none; font-size: 0.9rem; cursor: pointer; }
         .game-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a2e; z-index: 100; }
         .game-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(0,0,0,0.5); color: white; font-size: 0.9rem; position: absolute; top: 0; left: 0; right: 0; z-index: 10; }
         .game-toolbar button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 14px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; }
+        .game-timer { color: #f1c40f; font-weight: bold; }
         #gameCanvas { display: block; width: 100%; height: calc(100% - 40px); margin-top: 40px; }
         .game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
         .game-over-overlay.active { display: flex; }
@@ -48,24 +61,34 @@
         </div>
         <div id="currencyBar"></div>
         <div class="game-list">
-            <div class="game-card" onclick="launchGame('frogjump')">
+            <div class="game-card" onclick="selectGame('frogjump')">
                 <div class="icon">🐸</div>
                 <div class="title">青蛙跳台</div>
                 <div class="desc">跳上平台，收集宝石！点屏幕或按空格跳跃。</div>
-                <div class="cost">免费游玩</div>
+                <div class="cost">选择游玩时间</div>
             </div>
-            <div class="game-card" onclick="launchGame('carrace')">
+            <div class="game-card" onclick="selectGame('carrace')">
                 <div class="icon">🚗</div>
                 <div class="title">赛车竞速</div>
                 <div class="desc">躲开敌车！点屏幕左右或按←→换道。</div>
-                <div class="cost">免费游玩</div>
+                <div class="cost">选择游玩时间</div>
             </div>
+        </div>
+    </div>
+
+    <div class="time-select" id="timeSelect">
+        <div class="time-card">
+            <h3>⏱️ 选择游玩时间</h3>
+            <div id="timeOptions"></div>
+            <div class="time-info" id="timeInfo"></div>
+            <button class="time-cancel" onclick="cancelTimeSelect()">取消</button>
         </div>
     </div>
 
     <div class="game-container" id="gameContainer">
         <div class="game-toolbar">
             <button onclick="quitGame()">✕ 退出</button>
+            <span class="game-timer" id="gameTimer"></span>
             <span id="gameScore">得分: 0</span>
         </div>
         <canvas id="gameCanvas" width="800" height="556"></canvas>
@@ -73,11 +96,11 @@
 
     <div class="game-over-overlay" id="gameOverOverlay">
         <div class="game-over-card">
-            <h2>游戏结束</h2>
+            <h2 id="gameOverTitle">游戏结束</h2>
             <div class="score" id="finalScore">0</div>
             <p id="rewardMsg"></p>
             <div style="margin-top:20px">
-                <button class="btn-retry" onclick="retryGame()">再来一局</button>
+                <button class="btn-retry" id="retryBtn" onclick="retryGame()">再来一局</button>
                 <button class="btn-quit" onclick="backToMenu()">返回</button>
             </div>
         </div>
@@ -85,13 +108,40 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js?v=2"></script>
+    <script src="vip_common.js?v=3"></script>
     <script src="../games/xiaobawang/games/frogjump.js"></script>
     <script src="../games/xiaobawang/games/carrace.js"></script>
     <script>
         const USER_ID = 'george';
         let currentGame = null;
         let currentGameKey = null;
+        let selectedDuration = 0;
+        let selectedCost = 0;
+        let gameTimerInterval = null;
+        let gameTimeLeft = 0;
+
+        const TIME_OPTIONS = [
+            { minutes: 1, baseCost: 10 },
+            { minutes: 3, baseCost: 30 },
+            { minutes: 5, baseCost: 50 },
+        ];
+
+        function _todayGameKey() { return 'vip_game_time_' + USER_ID + '_' + new Date().toISOString().slice(0, 10); }
+
+        function _getTodayGameMinutes() {
+            try { return parseInt(localStorage.getItem(_todayGameKey()) || '0', 10); } catch(e) { return 0; }
+        }
+
+        function _addGameMinutes(min) {
+            try { localStorage.setItem(_todayGameKey(), String(_getTodayGameMinutes() + min)); } catch(e) {}
+        }
+
+        function _getMultiplier() {
+            const played = _getTodayGameMinutes();
+            if (played >= 10) return 3;
+            if (played >= 5) return 2;
+            return 1;
+        }
 
         function init() {
             try {
@@ -105,11 +155,70 @@
             try { vipCloudSync(USER_ID); } catch(e) {}
         }
 
-        function launchGame(gameKey) {
+        function selectGame(gameKey) {
             currentGameKey = gameKey;
+            const bal = VipCurrency.getBalance(USER_ID);
+            const played = _getTodayGameMinutes();
+            const mult = _getMultiplier();
+
+            const container = document.getElementById('timeOptions');
+            const info = document.getElementById('timeInfo');
+            let html = '';
+
+            TIME_OPTIONS.forEach(opt => {
+                const cost = opt.baseCost * mult;
+                const canAfford = bal.copper >= cost;
+                const cls = canAfford ? '' : ' disabled';
+                const costCls = mult > 1 ? ' expensive' : '';
+                html += '<div class="time-option' + cls + '" onclick="' + (canAfford ? 'confirmTime(' + opt.minutes + ',' + cost + ')' : '') + '">';
+                html += '<span class="time-label">' + opt.minutes + '分钟</span>';
+                html += '<span class="time-cost' + costCls + '">' + cost + '文铜钱</span>';
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+            let infoText = '今天已玩：' + played + '分钟';
+            if (mult > 1) infoText += ' | 费用×' + mult + '（超过' + (mult === 2 ? '5' : '10') + '分钟）';
+            info.textContent = infoText;
+
+            document.getElementById('timeSelect').classList.add('active');
+        }
+
+        function cancelTimeSelect() {
+            document.getElementById('timeSelect').classList.remove('active');
+        }
+
+        function confirmTime(minutes, cost) {
+            const result = VipCurrency.spendCopper(USER_ID, cost, '游戏' + minutes + '分钟');
+            if (!result) {
+                showToast('铜钱不够！');
+                return;
+            }
+            selectedDuration = minutes;
+            selectedCost = cost;
+            renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
+            document.getElementById('timeSelect').classList.remove('active');
+            launchGame(currentGameKey);
+        }
+
+        function launchGame(gameKey) {
             document.getElementById('menuView').style.display = 'none';
             document.getElementById('gameContainer').style.display = 'block';
             document.getElementById('gameScore').textContent = '得分: 0';
+
+            gameTimeLeft = selectedDuration * 60;
+            updateTimerDisplay();
+
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+            gameTimerInterval = setInterval(() => {
+                gameTimeLeft--;
+                updateTimerDisplay();
+                if (gameTimeLeft <= 0) {
+                    clearInterval(gameTimerInterval);
+                    gameTimerInterval = null;
+                    timeUp();
+                }
+            }, 1000);
 
             const canvas = document.getElementById('gameCanvas');
             canvas.width = 800;
@@ -135,21 +244,66 @@
             }
         }
 
-        function gameOver(score) {
+        function updateTimerDisplay() {
+            const m = Math.floor(gameTimeLeft / 60);
+            const s = gameTimeLeft % 60;
+            const el = document.getElementById('gameTimer');
+            el.textContent = '⏱ ' + m + ':' + String(s).padStart(2, '0');
+            if (gameTimeLeft <= 10) el.style.color = '#e74c3c';
+            else el.style.color = '#f1c40f';
+        }
+
+        function timeUp() {
             VipTime.stopTracking();
+            _addGameMinutes(selectedDuration);
+            if (currentGame) { currentGame.stop(); currentGame = null; }
+            document.getElementById('gameOverTitle').textContent = '⏱️ 时间到！';
+            const scoreEl = document.getElementById('gameScore').textContent.replace('得分: ', '');
+            document.getElementById('finalScore').textContent = scoreEl;
+            document.getElementById('rewardMsg').textContent = '本次游玩 ' + selectedDuration + '分钟，消耗 ' + selectedCost + '文铜钱';
+            document.getElementById('retryBtn').style.display = 'inline-block';
+            document.getElementById('gameOverOverlay').classList.add('active');
+        }
+
+        function gameOver(score) {
+            document.getElementById('gameOverTitle').textContent = '游戏结束';
             document.getElementById('finalScore').textContent = score;
-            document.getElementById('rewardMsg').textContent = '暂时免费游玩';
+            const remaining = Math.ceil(gameTimeLeft / 60);
+            document.getElementById('rewardMsg').textContent = '还剩 ' + remaining + ' 分钟，可以继续玩';
+            document.getElementById('retryBtn').style.display = 'inline-block';
             document.getElementById('gameOverOverlay').classList.add('active');
         }
 
         function retryGame() {
             document.getElementById('gameOverOverlay').classList.remove('active');
             if (currentGame) currentGame.stop();
-            launchGame(currentGameKey);
+            if (gameTimeLeft <= 0) {
+                selectGame(currentGameKey);
+                document.getElementById('gameContainer').style.display = 'none';
+                document.getElementById('menuView').style.display = 'block';
+                return;
+            }
+            const canvas = document.getElementById('gameCanvas');
+            canvas.width = 800;
+            canvas.height = 556;
+
+            if (currentGameKey === 'frogjump') {
+                if (window.frogJumpInstance) window.frogJumpInstance.stop();
+                currentGame = new FrogJump(canvas);
+                window.frogJumpInstance = currentGame;
+                currentGame.start();
+            } else if (currentGameKey === 'carrace') {
+                if (window.carRaceInstance) window.carRaceInstance.stop();
+                currentGame = new CarRace(canvas, 3);
+                window.carRaceInstance = currentGame;
+                currentGame.start();
+            }
         }
 
         function quitGame() {
             VipTime.stopTracking();
+            if (gameTimerInterval) { clearInterval(gameTimerInterval); gameTimerInterval = null; }
+            _addGameMinutes(Math.ceil((selectedDuration * 60 - gameTimeLeft) / 60));
             if (currentGame) { currentGame.stop(); currentGame = null; }
             document.getElementById('gameContainer').style.display = 'none';
             document.getElementById('gameOverOverlay').classList.remove('active');
@@ -159,7 +313,17 @@
 
         function backToMenu() {
             document.getElementById('gameOverOverlay').classList.remove('active');
-            quitGame();
+            if (gameTimeLeft > 0) {
+                document.getElementById('gameContainer').style.display = 'none';
+                document.getElementById('menuView').style.display = 'block';
+                VipTime.stopTracking();
+                if (gameTimerInterval) { clearInterval(gameTimerInterval); gameTimerInterval = null; }
+                _addGameMinutes(Math.ceil((selectedDuration * 60 - gameTimeLeft) / 60));
+                if (currentGame) { currentGame.stop(); currentGame = null; }
+                renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
+            } else {
+                quitGame();
+            }
         }
 
         function showToast(msg) {

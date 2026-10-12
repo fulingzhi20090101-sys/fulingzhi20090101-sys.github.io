@@ -90,9 +90,9 @@
     <div class="content" id="quizArea"></div>
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js?v=2"></script>
-    <script src="chars_p5.js?v=2"></script>
-    <script src="quiz_engine.js?v=2"></script>
+    <script src="vip_common.js?v=3"></script>
+    <script src="chars_p5.js?v=3"></script>
+    <script src="quiz_engine.js?v=3"></script>
     <script>
         const USER_ID = 'zy26';
         let quiz;
@@ -158,15 +158,12 @@
 
         function startQuiz(mode) {
             currentMode = mode;
-            quiz.score = 0;
-            quiz.total = 0;
-            quiz.streak = 0;
             updateScore(0, 0);
             quiz.randomQuestion(mode);
         }
 
         function nextQuestion() {
-            if (currentMode) quiz.randomQuestion(currentMode);
+            if (currentMode === 'matchPairs') quiz.matchPairs();
             else showQuizMenu();
         }
 

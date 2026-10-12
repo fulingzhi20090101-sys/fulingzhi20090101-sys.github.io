@@ -210,24 +210,32 @@ const _coinSvg = {
     gold: '<svg viewBox="0 0 32 20" width="28" height="18" style="vertical-align:middle"><ellipse cx="16" cy="14" rx="14" ry="6" fill="#ffd700" stroke="#daa520" stroke-width="1"/><path d="M6 14 Q8 4 16 2 Q24 4 26 14" fill="#ffec8b" stroke="#daa520" stroke-width="0.8"/><path d="M10 14 Q12 7 16 5 Q20 7 22 14" fill="#fff8dc" stroke="none"/><text x="16" y="16" text-anchor="middle" font-size="5" fill="#8b6914" font-weight="bold">金</text></svg>',
 };
 
+function _repeatIcon(svg, count, max) {
+    if (count <= 0) return '';
+    const show = Math.min(count, max || 10);
+    let html = '';
+    for (let i = 0; i < show; i++) html += svg;
+    if (count > show) html += '<span style="font-size:0.7rem;vertical-align:middle">+' + (count - show) + '</span>';
+    return html;
+}
+
 function renderCurrencyBar(container, userId) {
     const bal = VipCurrency.getBalance(userId);
     const fmt = VipCurrency.formatBalance(bal);
+    const copperDetail = VipCurrency.formatCopperDetail(fmt.copper);
     container.innerHTML = '';
     container.className = 'currency-bar';
 
-    const items = [];
-    if (fmt.gold > 0) items.push({ icon: _coinSvg.gold, label: fmt.gold + '两金', cls: 'gold' });
-    if (fmt.silver > 0) items.push({ icon: _coinSvg.silver, label: fmt.silver + '两银', cls: 'silver' });
-    items.push({ icon: _coinSvg.tongbao, label: fmt.copper + '文铜钱', cls: 'copper' });
+    let html = '';
+    if (fmt.gold > 0) html += '<span class="currency-item gold" style="cursor:pointer">' + _repeatIcon(_coinSvg.gold, fmt.gold, 5) + '</span>';
+    if (fmt.silver > 0) html += '<span class="currency-item silver" style="cursor:pointer">' + _repeatIcon(_coinSvg.silver, fmt.silver, 5) + '</span>';
+    if (copperDetail.yuanbao > 0) html += '<span class="currency-item copper" style="cursor:pointer">' + _repeatIcon(_coinSvg.yuanbao, copperDetail.yuanbao, 5) + '</span>';
+    if (copperDetail.zhongbao > 0) html += '<span class="currency-item copper" style="cursor:pointer">' + _repeatIcon(_coinSvg.zhongbao, copperDetail.zhongbao, 5) + '</span>';
+    html += '<span class="currency-item copper" style="cursor:pointer">' + _repeatIcon(_coinSvg.tongbao, copperDetail.tongbao || (fmt.copper === 0 ? 0 : copperDetail.tongbao), 9) + '</span>';
+    html += '<span style="font-size:0.8rem;color:#7f8c8d;padding:4px 6px">共' + fmt.total + '文</span>';
 
-    for (const item of items) {
-        const span = document.createElement('span');
-        span.className = 'currency-item ' + item.cls;
-        span.innerHTML = item.icon + ' ' + item.label;
-        span.onclick = () => showCurrencyDetail(userId);
-        container.appendChild(span);
-    }
+    container.innerHTML = html;
+    container.onclick = () => showCurrencyDetail(userId);
 }
 
 function showCurrencyDetail(userId) {
@@ -247,13 +255,12 @@ function showCurrencyDetail(userId) {
     html += '<h3 style="margin:0 0 20px">💰 财产详情</h3>';
     html += '<div style="text-align:left;line-height:2">';
 
-    if (fmt.gold > 0) html += '<div>' + _coinSvg.gold + ' 金元宝 × ' + fmt.gold + '（' + fmt.gold + '两黄金）</div>';
-    if (fmt.silver > 0) html += '<div>' + _coinSvg.silver + ' 银元宝 × ' + fmt.silver + '（' + fmt.silver + '两白银）</div>';
-    html += '<div style="margin-top:8px;font-weight:bold">铜钱明细：</div>';
-    if (copperDetail.yuanbao > 0) html += '<div>&nbsp;&nbsp;' + _coinSvg.yuanbao + ' 咸丰元宝 × ' + copperDetail.yuanbao + '（' + copperDetail.yuanbao * 100 + '文）</div>';
-    if (copperDetail.zhongbao > 0) html += '<div>&nbsp;&nbsp;' + _coinSvg.zhongbao + ' 咸丰重宝 × ' + copperDetail.zhongbao + '（' + copperDetail.zhongbao * 10 + '文）</div>';
-    if (copperDetail.tongbao > 0) html += '<div>&nbsp;&nbsp;' + _coinSvg.tongbao + ' 咸丰通宝 × ' + copperDetail.tongbao + '（' + copperDetail.tongbao + '文）</div>';
-    if (fmt.copper === 0) html += '<div>&nbsp;&nbsp;无铜钱</div>';
+    if (fmt.gold > 0) html += '<div style="margin:8px 0">' + _repeatIcon(_coinSvg.gold, fmt.gold, 10) + '<br><span style="font-size:0.85rem">金元宝 ' + fmt.gold + '两</span></div>';
+    if (fmt.silver > 0) html += '<div style="margin:8px 0">' + _repeatIcon(_coinSvg.silver, fmt.silver, 10) + '<br><span style="font-size:0.85rem">银元宝 ' + fmt.silver + '两</span></div>';
+    if (copperDetail.yuanbao > 0) html += '<div style="margin:6px 0">' + _repeatIcon(_coinSvg.yuanbao, copperDetail.yuanbao, 10) + '<br><span style="font-size:0.85rem">咸丰元宝 ' + copperDetail.yuanbao + '枚（' + copperDetail.yuanbao * 100 + '文）</span></div>';
+    if (copperDetail.zhongbao > 0) html += '<div style="margin:6px 0">' + _repeatIcon(_coinSvg.zhongbao, copperDetail.zhongbao, 10) + '<br><span style="font-size:0.85rem">咸丰重宝 ' + copperDetail.zhongbao + '枚（' + copperDetail.zhongbao * 10 + '文）</span></div>';
+    if (copperDetail.tongbao > 0) html += '<div style="margin:6px 0">' + _repeatIcon(_coinSvg.tongbao, copperDetail.tongbao, 9) + '<br><span style="font-size:0.85rem">咸丰通宝 ' + copperDetail.tongbao + '枚（' + copperDetail.tongbao + '文）</span></div>';
+    if (fmt.copper === 0 && fmt.gold === 0 && fmt.silver === 0) html += '<div>暂无财产</div>';
 
     html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-weight:bold">总计：' + fmt.total + '文铜钱</div>';
     html += '</div>';
