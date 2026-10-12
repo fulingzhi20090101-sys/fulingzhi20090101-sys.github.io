@@ -72,7 +72,7 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js"></script>
+    <script src="vip_common.js?v=2"></script>
     <script>
         const USER_KEY = 'vip_george';
         const AVATARS = ['🐵','🦍','🐻','🐼','🐨','🦊','🐰','🐸','🐶','🐱','🦄','🐲','🦅','🐧','🐬','🦖'];
@@ -88,7 +88,7 @@
             loadAvatar();
             buildPicker();
             renderCurrencyBar(document.getElementById('currencyBar'), 'george');
-            vipCloudSync('george');
+            try { vipCloudSync('george'); } catch(e) {}
         }
 
         function loadAvatar() {

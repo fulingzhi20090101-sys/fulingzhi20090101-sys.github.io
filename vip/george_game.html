@@ -85,7 +85,7 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js"></script>
+    <script src="vip_common.js?v=2"></script>
     <script src="../games/xiaobawang/games/frogjump.js"></script>
     <script src="../games/xiaobawang/games/carrace.js"></script>
     <script>
@@ -102,7 +102,7 @@
             } catch(e) {}
             VipLogin.record(USER_ID);
             renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
-            vipCloudSync(USER_ID);
+            try { vipCloudSync(USER_ID); } catch(e) {}
         }
 
         function launchGame(gameKey) {

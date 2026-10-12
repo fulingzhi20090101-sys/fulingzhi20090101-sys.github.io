@@ -90,9 +90,9 @@
     <div class="content" id="quizArea"></div>
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js"></script>
-    <script src="chars_p5.js"></script>
-    <script src="quiz_engine.js"></script>
+    <script src="vip_common.js?v=2"></script>
+    <script src="chars_p5.js?v=2"></script>
+    <script src="quiz_engine.js?v=2"></script>
     <script>
         const USER_ID = 'zy26';
         let quiz;
@@ -114,7 +114,7 @@
             VipLogin.record(USER_ID);
             VipTime.startTracking(USER_ID, 'quiz');
             renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
-            vipCloudSync(USER_ID);
+            try { vipCloudSync(USER_ID); } catch(e) {}
 
             quiz = new QuizEngine(CHARS_P5, USER_ID, document.getElementById('quizArea'));
             quiz.onScoreChange = updateScore;
