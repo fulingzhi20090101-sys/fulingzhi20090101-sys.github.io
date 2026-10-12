@@ -149,14 +149,14 @@ class QuizEngine {
         html += '<div class="quiz-type-label">🧩 汉字连连看</div>';
         html += '<div class="quiz-prompt">点击汉字和对应拼音配对</div>';
         html += '<div class="match-grid">';
-        html += '<div class="match-col" id="matchChars">';
+        html += '<div class="match-col">';
         charButtons.forEach(c => {
-            html += '<button class="match-btn char-btn" data-char="' + c.char + '" onclick="quiz.matchClick(this, \'char\', \'' + this._esc(c.char) + '\')">' + c.char + '</button>';
+            html += '<button class="match-btn match-card char-btn" data-char="' + c.char + '" onclick="quiz.matchClick(this, \'char\', \'' + this._esc(c.char) + '\')">' + c.char + '</button>';
         });
         html += '</div>';
-        html += '<div class="match-col" id="matchPinyins">';
+        html += '<div class="match-col">';
         pinyinButtons.forEach(c => {
-            html += '<button class="match-btn pinyin-btn" data-pinyin="' + c.pinyin + '" onclick="quiz.matchClick(this, \'pinyin\', \'' + this._esc(c.pinyin) + '\')">' + c.pinyin + '</button>';
+            html += '<button class="match-btn match-card pinyin-btn" data-pinyin="' + c.pinyin + '" onclick="quiz.matchClick(this, \'pinyin\', \'' + this._esc(c.pinyin) + '\')">' + c.pinyin + '</button>';
         });
         html += '</div>';
         html += '</div></div>';

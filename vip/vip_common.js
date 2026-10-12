@@ -202,6 +202,14 @@ function formatSeconds(s) {
     return h + '小时' + (m ? m+'分' : '');
 }
 
+const _coinSvg = {
+    tongbao: '<svg viewBox="0 0 28 28" width="20" height="20" style="vertical-align:middle"><circle cx="14" cy="14" r="13" fill="#b8860b" stroke="#8b6914" stroke-width="1.5"/><circle cx="14" cy="14" r="10.5" fill="none" stroke="#d4a017" stroke-width="0.8"/><rect x="11" y="11" width="6" height="6" fill="#8b6914" stroke="#6b4f0a" stroke-width="0.5"/><text x="14" y="8.5" text-anchor="middle" font-size="4.5" fill="#fff" font-weight="bold">通宝</text><text x="14" y="23" text-anchor="middle" font-size="4.5" fill="#fff" font-weight="bold">咸丰</text></svg>',
+    zhongbao: '<svg viewBox="0 0 28 28" width="22" height="22" style="vertical-align:middle"><circle cx="14" cy="14" r="13" fill="#cd7f32" stroke="#a0522d" stroke-width="1.5"/><circle cx="14" cy="14" r="10.5" fill="none" stroke="#daa520" stroke-width="0.8"/><rect x="11" y="11" width="6" height="6" fill="#a0522d" stroke="#8b4513" stroke-width="0.5"/><text x="14" y="8.5" text-anchor="middle" font-size="4.5" fill="#fff" font-weight="bold">重宝</text><text x="14" y="23" text-anchor="middle" font-size="4.5" fill="#fff" font-weight="bold">咸丰</text></svg>',
+    yuanbao: '<svg viewBox="0 0 28 28" width="24" height="24" style="vertical-align:middle"><circle cx="14" cy="14" r="13" fill="#8b4513" stroke="#654321" stroke-width="1.5"/><circle cx="14" cy="14" r="10.5" fill="none" stroke="#b8860b" stroke-width="0.8"/><rect x="11" y="11" width="6" height="6" fill="#654321" stroke="#4a3728" stroke-width="0.5"/><text x="14" y="8.5" text-anchor="middle" font-size="4.5" fill="#ffd700" font-weight="bold">元宝</text><text x="14" y="23" text-anchor="middle" font-size="4.5" fill="#ffd700" font-weight="bold">咸丰</text></svg>',
+    silver: '<svg viewBox="0 0 32 20" width="28" height="18" style="vertical-align:middle"><ellipse cx="16" cy="14" rx="14" ry="6" fill="#c0c0c0" stroke="#a9a9a9" stroke-width="1"/><path d="M6 14 Q8 4 16 2 Q24 4 26 14" fill="#d3d3d3" stroke="#a9a9a9" stroke-width="0.8"/><path d="M10 14 Q12 7 16 5 Q20 7 22 14" fill="#e8e8e8" stroke="none"/><text x="16" y="16" text-anchor="middle" font-size="5" fill="#666" font-weight="bold">银</text></svg>',
+    gold: '<svg viewBox="0 0 32 20" width="28" height="18" style="vertical-align:middle"><ellipse cx="16" cy="14" rx="14" ry="6" fill="#ffd700" stroke="#daa520" stroke-width="1"/><path d="M6 14 Q8 4 16 2 Q24 4 26 14" fill="#ffec8b" stroke="#daa520" stroke-width="0.8"/><path d="M10 14 Q12 7 16 5 Q20 7 22 14" fill="#fff8dc" stroke="none"/><text x="16" y="16" text-anchor="middle" font-size="5" fill="#8b6914" font-weight="bold">金</text></svg>',
+};
+
 function renderCurrencyBar(container, userId) {
     const bal = VipCurrency.getBalance(userId);
     const fmt = VipCurrency.formatBalance(bal);
@@ -209,9 +217,9 @@ function renderCurrencyBar(container, userId) {
     container.className = 'currency-bar';
 
     const items = [];
-    if (fmt.gold > 0) items.push({ icon: '🟡', label: fmt.gold + '两金', cls: 'gold' });
-    if (fmt.silver > 0) items.push({ icon: '⚪', label: fmt.silver + '两银', cls: 'silver' });
-    items.push({ icon: '🟤', label: fmt.copper + '文铜钱', cls: 'copper' });
+    if (fmt.gold > 0) items.push({ icon: _coinSvg.gold, label: fmt.gold + '两金', cls: 'gold' });
+    if (fmt.silver > 0) items.push({ icon: _coinSvg.silver, label: fmt.silver + '两银', cls: 'silver' });
+    items.push({ icon: _coinSvg.tongbao, label: fmt.copper + '文铜钱', cls: 'copper' });
 
     for (const item of items) {
         const span = document.createElement('span');
@@ -239,12 +247,12 @@ function showCurrencyDetail(userId) {
     html += '<h3 style="margin:0 0 20px">💰 财产详情</h3>';
     html += '<div style="text-align:left;line-height:2">';
 
-    if (fmt.gold > 0) html += '<div>🟡 金元宝 × ' + fmt.gold + '（' + fmt.gold + '两黄金）</div>';
-    if (fmt.silver > 0) html += '<div>⚪ 银元宝 × ' + fmt.silver + '（' + fmt.silver + '两白银）</div>';
-    html += '<div style="margin-top:8px;font-weight:bold">🟤 铜钱明细：</div>';
-    if (copperDetail.yuanbao > 0) html += '<div>&nbsp;&nbsp;咸丰元宝 × ' + copperDetail.yuanbao + '（' + copperDetail.yuanbao * 100 + '文）</div>';
-    if (copperDetail.zhongbao > 0) html += '<div>&nbsp;&nbsp;咸丰重宝 × ' + copperDetail.zhongbao + '（' + copperDetail.zhongbao * 10 + '文）</div>';
-    if (copperDetail.tongbao > 0) html += '<div>&nbsp;&nbsp;咸丰通宝 × ' + copperDetail.tongbao + '（' + copperDetail.tongbao + '文）</div>';
+    if (fmt.gold > 0) html += '<div>' + _coinSvg.gold + ' 金元宝 × ' + fmt.gold + '（' + fmt.gold + '两黄金）</div>';
+    if (fmt.silver > 0) html += '<div>' + _coinSvg.silver + ' 银元宝 × ' + fmt.silver + '（' + fmt.silver + '两白银）</div>';
+    html += '<div style="margin-top:8px;font-weight:bold">铜钱明细：</div>';
+    if (copperDetail.yuanbao > 0) html += '<div>&nbsp;&nbsp;' + _coinSvg.yuanbao + ' 咸丰元宝 × ' + copperDetail.yuanbao + '（' + copperDetail.yuanbao * 100 + '文）</div>';
+    if (copperDetail.zhongbao > 0) html += '<div>&nbsp;&nbsp;' + _coinSvg.zhongbao + ' 咸丰重宝 × ' + copperDetail.zhongbao + '（' + copperDetail.zhongbao * 10 + '文）</div>';
+    if (copperDetail.tongbao > 0) html += '<div>&nbsp;&nbsp;' + _coinSvg.tongbao + ' 咸丰通宝 × ' + copperDetail.tongbao + '（' + copperDetail.tongbao + '文）</div>';
     if (fmt.copper === 0) html += '<div>&nbsp;&nbsp;无铜钱</div>';
 
     html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-weight:bold">总计：' + fmt.total + '文铜钱</div>';
