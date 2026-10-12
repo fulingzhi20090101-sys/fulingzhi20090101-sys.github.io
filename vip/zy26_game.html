@@ -102,6 +102,7 @@
             } catch(e) {}
             VipLogin.record(USER_ID);
             renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
+            vipCloudSync(USER_ID);
         }
 
         function launchGame(gameKey) {

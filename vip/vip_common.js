@@ -1,10 +1,23 @@
 'use strict';
 
+const VIP_API_BASE = 'https://laofujia-api.laofujia-worker.workers.dev';
 const VIP_CURRENCY_KEY = 'vip_currency_';
 const VIP_TRANSACTIONS_KEY = 'vip_tx_';
 const VIP_TIME_KEY = 'vip_time_';
 const VIP_LOGIN_KEY = 'vip_login_';
 const VIP_INITIAL_COPPER = 88;
+
+function _apiPost(path, data) {
+    return fetch(VIP_API_BASE + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    }).then(r => r.json()).catch(() => null);
+}
+
+function _apiGet(path) {
+    return fetch(VIP_API_BASE + path).then(r => r.json()).catch(() => null);
+}
 
 const VipCurrency = {
     getBalance(userId) {
@@ -27,6 +40,7 @@ const VipCurrency = {
         bal.copper = (bal.copper || 0) + amount;
         this.setBalance(userId, bal);
         this._addTx(userId, amount, reason);
+        _apiPost('/api/balance/' + userId, { amount, reason });
         return bal;
     },
 
@@ -36,7 +50,28 @@ const VipCurrency = {
         bal.copper -= amount;
         this.setBalance(userId, bal);
         this._addTx(userId, -amount, reason);
+        _apiPost('/api/balance/' + userId, { amount: -amount, reason });
         return bal;
+    },
+
+    syncFromCloud(userId) {
+        return _apiGet('/api/balance/' + userId).then(remote => {
+            if (remote && typeof remote.copper === 'number') {
+                this.setBalance(userId, remote);
+                return remote;
+            }
+            return null;
+        });
+    },
+
+    syncTransactionsFromCloud(userId) {
+        return _apiGet('/api/transactions/' + userId).then(txs => {
+            if (Array.isArray(txs) && txs.length > 0) {
+                try { localStorage.setItem(VIP_TRANSACTIONS_KEY + userId, JSON.stringify(txs)); } catch(e) {}
+                return txs;
+            }
+            return null;
+        });
     },
 
     formatBalance(bal) {
@@ -89,6 +124,7 @@ const VipTime = {
             if (data[activity].length > 500) data[activity] = data[activity].slice(-500);
             localStorage.setItem(key, JSON.stringify(data));
         } catch(e) {}
+        _apiPost('/api/time/' + userId, { activity, seconds });
         this._current = null;
     },
 
@@ -120,14 +156,13 @@ const VipTime = {
 
 const VipLogin = {
     record(userId) {
-        try {
-            const info = {
-                time: Date.now(),
-                device: this._detectDevice(),
-                date: new Date().toISOString()
-            };
-            localStorage.setItem(VIP_LOGIN_KEY + userId, JSON.stringify(info));
-        } catch(e) {}
+        const info = {
+            time: Date.now(),
+            device: this._detectDevice(),
+            date: new Date().toISOString()
+        };
+        try { localStorage.setItem(VIP_LOGIN_KEY + userId, JSON.stringify(info)); } catch(e) {}
+        _apiPost('/api/login/' + userId, { device: info.device });
     },
 
     getLast(userId) {
@@ -148,6 +183,16 @@ const VipLogin = {
         return '未知设备';
     }
 };
+
+function vipCloudSync(userId) {
+    VipCurrency.syncFromCloud(userId).then(bal => {
+        if (bal) {
+            const bars = document.querySelectorAll('.currency-bar');
+            bars.forEach(bar => renderCurrencyBar(bar, userId));
+        }
+    });
+    VipCurrency.syncTransactionsFromCloud(userId);
+}
 
 function formatSeconds(s) {
     if (s < 60) return s + '秒';

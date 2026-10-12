@@ -103,6 +103,19 @@
             loadAvatar();
             buildPicker();
             buildDashboard();
+            syncAdminDashboard();
+        }
+
+        function syncAdminDashboard() {
+            _apiGet('/api/admin/all').then(data => {
+                if (!data) return;
+                for (const user of MANAGED_USERS) {
+                    if (data[user.id]) {
+                        if (data[user.id].balance) VipCurrency.setBalance(user.id, data[user.id].balance);
+                    }
+                }
+                buildDashboard();
+            });
         }
 
         function loadAvatar() {

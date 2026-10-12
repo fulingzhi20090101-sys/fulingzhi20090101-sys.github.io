@@ -113,6 +113,7 @@
             VipLogin.record(USER_ID);
             VipTime.startTracking(USER_ID, 'quiz');
             renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
+            vipCloudSync(USER_ID);
 
             quiz = new QuizEngine(CHARS_P5, USER_ID, document.getElementById('quizArea'));
             quiz.onScoreChange = updateScore;
