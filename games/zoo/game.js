@@ -493,87 +493,83 @@ function renderMap() {
 
 function renderHUD() {
     const p = gameState.player;
-    const pad = 10;
-    const w = 200, h = 80;
+    const pad = 8;
+    const w = 210, h = 90;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.roundRect(pad, pad, w, h, 8);
-    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(pad, pad, w, h);
+
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px sans-serif';
+    ctx.font = 'bold 15px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(p.emoji + ' ' + p.name + '  Lv.' + p.level, pad + 8, pad + 8);
 
     ctx.fillStyle = '#e74c3c';
-    ctx.fillRect(pad + 8, pad + 28, 80, 10);
+    ctx.fillRect(pad + 8, pad + 30, 90, 12);
     ctx.fillStyle = '#2ecc71';
-    ctx.fillRect(pad + 8, pad + 28, 80 * (p.stats.hp / p.maxHp), 10);
+    ctx.fillRect(pad + 8, pad + 30, 90 * (p.stats.hp / p.maxHp), 12);
     ctx.fillStyle = '#fff';
-    ctx.font = '10px sans-serif';
-    ctx.fillText('HP ' + p.stats.hp + '/' + p.maxHp, pad + 92, pad + 28);
+    ctx.font = '12px sans-serif';
+    ctx.fillText('HP ' + p.stats.hp + '/' + p.maxHp, pad + 102, pad + 30);
 
     ctx.fillStyle = '#555';
-    ctx.fillRect(pad + 8, pad + 42, 80, 10);
+    ctx.fillRect(pad + 8, pad + 48, 90, 12);
     ctx.fillStyle = '#3498db';
-    ctx.fillRect(pad + 8, pad + 42, 80 * (p.stats.mp / p.maxMp), 10);
+    ctx.fillRect(pad + 8, pad + 48, 90 * (p.stats.mp / p.maxMp), 12);
     ctx.fillStyle = '#fff';
-    ctx.fillText('MP ' + p.stats.mp + '/' + p.maxMp, pad + 92, pad + 42);
+    ctx.fillText('MP ' + p.stats.mp + '/' + p.maxMp, pad + 102, pad + 48);
 
     ctx.fillStyle = '#f1c40f';
-    ctx.fillText('💰 ' + p.gold, pad + 8, pad + 58);
-    ctx.fillStyle = '#aaa';
-    ctx.fillText('EXP ' + p.exp + '/' + p.expNext, pad + 70, pad + 58);
+    ctx.font = '13px sans-serif';
+    ctx.fillText('💰 ' + p.gold, pad + 8, pad + 68);
+    ctx.fillStyle = '#ccc';
+    ctx.fillText('EXP ' + p.exp + '/' + p.expNext, pad + 80, pad + 68);
 
     const mapName = getMap().name;
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.font = 'bold 16px sans-serif';
     const mnw = ctx.measureText(mapName).width + 20;
-    ctx.roundRect(canvas.width - mnw - pad, pad, mnw, 28, 8);
-    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(canvas.width - mnw - pad, pad, mnw, 30);
     ctx.fillStyle = '#f1c40f';
     ctx.textAlign = 'right';
-    ctx.fillText(mapName, canvas.width - pad - 10, pad + 7);
+    ctx.fillText(mapName, canvas.width - pad - 10, pad + 8);
 }
 
 function renderDialog() {
     const d = gameState.dialog;
-    const pad = 20;
-    const h = 100;
+    const pad = 12;
+    const h = 120;
     const y = canvas.height - h - pad;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.85)';
-    ctx.roundRect(pad, y, canvas.width - pad * 2, h, 12);
-    ctx.fill();
-    ctx.strokeStyle = '#f1c40f';
-    ctx.lineWidth = 2;
-    ctx.roundRect(pad, y, canvas.width - pad * 2, h, 12);
-    ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.9)';
+    ctx.fillRect(pad, y, canvas.width - pad * 2, h);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pad, y, canvas.width - pad * 2, h);
 
     ctx.fillStyle = '#f1c40f';
-    ctx.font = 'bold 14px sans-serif';
+    ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(d.speaker, pad + 15, y + 12);
+    ctx.fillText(d.speaker, pad + 12, y + 10);
 
     ctx.fillStyle = '#fff';
-    ctx.font = '14px sans-serif';
-    wrapText(d.text, pad + 15, y + 35, canvas.width - pad * 2 - 30, 20);
+    ctx.font = '16px sans-serif';
+    wrapText(d.text, pad + 12, y + 36, canvas.width - pad * 2 - 24, 22);
 
-    ctx.fillStyle = '#aaa';
-    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#999';
+    ctx.font = '13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('点击或按Enter继续', canvas.width - pad - 15, y + h - 18);
+    ctx.fillText('点击或按Enter继续', canvas.width - pad - 12, y + h - 20);
 }
 
 function renderMessage() {
-    const pad = 20;
-    ctx.font = '13px sans-serif';
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.font = '15px sans-serif';
     const tw = ctx.measureText(gameState.message).width;
     const w = Math.min(tw + 40, canvas.width - 40);
-    ctx.roundRect((canvas.width - w) / 2, canvas.height - 60, w, 36, 10);
-    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillRect((canvas.width - w) / 2, canvas.height - 60, w, 36);
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -622,36 +618,36 @@ function renderBattle() {
     ctx.fillStyle = '#e74c3c';
     ctx.fillRect(barX, barY, barW * Math.max(0, b.monster.currentHp / b.monster.hp), barH);
     ctx.fillStyle = '#fff';
-    ctx.font = '10px sans-serif';
-    ctx.fillText('HP ' + b.monster.currentHp + '/' + b.monster.hp, canvas.width / 2, barY + barH + 10);
+    ctx.font = '12px sans-serif';
+    ctx.fillText('HP ' + b.monster.currentHp + '/' + b.monster.hp, canvas.width / 2, barY + barH + 12);
 
     const logY = canvas.height * 0.46;
-    const logH = 70;
+    const logH = 80;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(10, logY, canvas.width - 20, logH);
     ctx.fillStyle = '#ddd';
-    ctx.font = '12px sans-serif';
+    ctx.font = '14px sans-serif';
     ctx.textAlign = 'left';
     const visibleLogs = b.log.slice(-3);
     visibleLogs.forEach((l, i) => {
-        ctx.fillText(l, 20, logY + 18 + i * 20);
+        ctx.fillText(l, 20, logY + 20 + i * 24);
     });
 
     const panelY = canvas.height * 0.46 + logH + 10;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(10, panelY, canvas.width - 20, 30);
+    ctx.fillRect(10, panelY, canvas.width - 20, 34);
 
     ctx.fillStyle = '#2ecc71';
-    ctx.fillRect(20, panelY + 4, 80 * (b.playerHp / gameState.player.maxHp), 10);
+    ctx.fillRect(20, panelY + 4, 90 * (b.playerHp / gameState.player.maxHp), 12);
     ctx.fillStyle = '#fff';
-    ctx.font = '10px sans-serif';
+    ctx.font = '12px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('HP ' + b.playerHp + '/' + gameState.player.maxHp, 105, panelY + 5);
+    ctx.fillText('HP ' + b.playerHp + '/' + gameState.player.maxHp, 115, panelY + 5);
 
     ctx.fillStyle = '#3498db';
-    ctx.fillRect(20, panelY + 17, 80 * (b.playerMp / gameState.player.maxMp), 10);
+    ctx.fillRect(20, panelY + 19, 90 * (b.playerMp / gameState.player.maxMp), 12);
     ctx.fillStyle = '#fff';
-    ctx.fillText('MP ' + b.playerMp + '/' + gameState.player.maxMp, 105, panelY + 18);
+    ctx.fillText('MP ' + b.playerMp + '/' + gameState.player.maxMp, 115, panelY + 20);
 
     if (b.result) return;
     if (b.turn !== 'player') return;
@@ -692,10 +688,9 @@ let battleButtons = [];
 
 function drawBtn(x, y, w, h, text, color, onClick) {
     ctx.fillStyle = color;
-    ctx.roundRect(x, y, w, h, 10);
-    ctx.fill();
+    ctx.fillRect(x, y, w, h);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 15px sans-serif';
+    ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, x + w / 2, y + h / 2);
