@@ -88,9 +88,9 @@
         </div>
     </div>
 
-    <script src="characters.js?v=6"></script>
-    <script src="maps.js?v=6"></script>
-    <script src="game.js?v=6"></script>
+    <script src="characters.js?v=7"></script>
+    <script src="maps.js?v=7"></script>
+    <script src="game.js?v=7"></script>
     <script>
         let selectedChar = null;
         let savedGame = null;
@@ -211,6 +211,7 @@
                 } else if (gameState.mode === 'npc_menu') {
                     handleNpcMenuClick(cx, cy);
                 } else if (gameState.mode === 'dialog') {
+                    if (Date.now() - _npcMenuActionTime < 400) return;
                     gameState.mode = 'explore';
                     gameState.dialog = null;
                 }
@@ -258,14 +259,20 @@
             document.getElementById('dpadConfirm').addEventListener('touchstart', e => {
                 e.preventDefault();
                 if (gameState.mode === 'dialog') {
+                    if (Date.now() - _npcMenuActionTime < 400) return;
                     gameState.mode = 'explore';
                     gameState.dialog = null;
+                } else if (gameState.mode === 'npc_menu') {
+                    handleNpcMenuAction('leave');
                 }
             }, { passive: false });
             document.getElementById('dpadConfirm').addEventListener('click', () => {
                 if (gameState.mode === 'dialog') {
+                    if (Date.now() - _npcMenuActionTime < 400) return;
                     gameState.mode = 'explore';
                     gameState.dialog = null;
+                } else if (gameState.mode === 'npc_menu') {
+                    handleNpcMenuAction('leave');
                 }
             });
         }

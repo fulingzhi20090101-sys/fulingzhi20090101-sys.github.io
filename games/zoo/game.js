@@ -232,8 +232,10 @@ function showNpcMenu(type, id, bossRef) {
 }
 
 let npcMenuButtons = [];
+let _npcMenuActionTime = 0;
 
 function handleNpcMenuAction(action) {
+    _npcMenuActionTime = Date.now();
     const menu = gameState.npcMenu;
     if (!menu) return;
 
@@ -547,6 +549,7 @@ function setupInput() {
         touchStartY = t.clientY;
 
         if (gameState.mode === 'dialog') {
+            if (Date.now() - _npcMenuActionTime < 400) return;
             gameState.mode = 'explore';
             gameState.dialog = null;
             return;
