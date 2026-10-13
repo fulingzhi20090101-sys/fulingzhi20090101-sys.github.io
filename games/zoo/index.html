@@ -37,17 +37,15 @@
         #gameScreen { display: none; width: 100%; height: 100%; position: relative; }
         #gameCanvas { display: block; width: 100%; height: 100%; background: #1a1a2e; }
 
-        .d-pad { position: fixed; bottom: 20px; left: 20px; z-index: 10; display: none; }
-        .d-pad button { position: absolute; width: 50px; height: 50px; border: none; background: rgba(255,255,255,0.15); color: #fff; font-size: 1.4rem; border-radius: 12px; cursor: pointer; }
-        .d-pad button:active { background: rgba(255,255,255,0.3); }
-        .d-pad .up { left: 55px; top: 0; }
-        .d-pad .down { left: 55px; top: 110px; }
-        .d-pad .left { left: 0; top: 55px; }
-        .d-pad .right { left: 110px; top: 55px; }
-
-        @media (pointer: coarse) {
-            .d-pad { display: block; }
-        }
+        .d-pad { position: fixed; bottom: 30px; left: 20px; z-index: 10; display: none; width: 180px; height: 180px; }
+        .d-pad.active { display: block; }
+        .d-pad button { position: absolute; width: 56px; height: 56px; border: 2px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.45); color: #fff; font-size: 1.6rem; border-radius: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+        .d-pad button:active, .d-pad button.pressed { background: rgba(255,255,255,0.35); }
+        .d-pad .up { left: 62px; top: 0; }
+        .d-pad .down { left: 62px; top: 124px; }
+        .d-pad .left { left: 0; top: 62px; }
+        .d-pad .right { left: 124px; top: 62px; }
+        .d-pad .center { left: 62px; top: 62px; font-size: 1.2rem; background: rgba(241,196,15,0.3); border-color: rgba(241,196,15,0.4); }
     </style>
 </head>
 <body>
@@ -65,16 +63,17 @@
     <div id="gameScreen">
         <canvas id="gameCanvas"></canvas>
         <div class="d-pad" id="dpad">
-            <button class="up" onclick="movePlayer(0,-1)">▲</button>
-            <button class="down" onclick="movePlayer(0,1)">▼</button>
-            <button class="left" onclick="movePlayer(-1,0)">◀</button>
-            <button class="right" onclick="movePlayer(1,0)">▶</button>
+            <button class="up" data-dx="0" data-dy="-1">▲</button>
+            <button class="down" data-dx="0" data-dy="1">▼</button>
+            <button class="left" data-dx="-1" data-dy="0">◀</button>
+            <button class="right" data-dx="1" data-dy="0">▶</button>
+            <button class="center" id="dpadConfirm">确定</button>
         </div>
     </div>
 
-    <script src="characters.js"></script>
-    <script src="maps.js"></script>
-    <script src="game.js"></script>
+    <script src="characters.js?v=2"></script>
+    <script src="maps.js?v=2"></script>
+    <script src="game.js?v=2"></script>
     <script>
         let selectedChar = null;
 
@@ -114,7 +113,9 @@
             if (!selectedChar) return;
             document.getElementById('titleScreen').style.display = 'none';
             document.getElementById('gameScreen').style.display = 'block';
+            document.getElementById('dpad').classList.add('active');
             initGame(selectedChar);
+            setupDpad();
 
             const canvas = document.getElementById('gameCanvas');
             canvas.addEventListener('click', e => {
@@ -135,6 +136,48 @@
                     handleBattleClick(t.clientX - rect.left, t.clientY - rect.top);
                 }
             }, { passive: true });
+        }
+
+        function setupDpad() {
+            let moveInterval = null;
+            const dpad = document.getElementById('dpad');
+            const dirBtns = dpad.querySelectorAll('[data-dx]');
+
+            function startMove(btn) {
+                const dx = parseInt(btn.dataset.dx);
+                const dy = parseInt(btn.dataset.dy);
+                btn.classList.add('pressed');
+                movePlayer(dx, dy);
+                clearInterval(moveInterval);
+                moveInterval = setInterval(() => movePlayer(dx, dy), 180);
+            }
+            function stopMove() {
+                dirBtns.forEach(b => b.classList.remove('pressed'));
+                clearInterval(moveInterval);
+                moveInterval = null;
+            }
+
+            dirBtns.forEach(btn => {
+                btn.addEventListener('touchstart', e => { e.preventDefault(); startMove(btn); }, { passive: false });
+                btn.addEventListener('touchend', e => { e.preventDefault(); stopMove(); }, { passive: false });
+                btn.addEventListener('touchcancel', e => { stopMove(); });
+                btn.addEventListener('mousedown', e => { e.preventDefault(); startMove(btn); });
+            });
+            document.addEventListener('mouseup', stopMove);
+
+            document.getElementById('dpadConfirm').addEventListener('touchstart', e => {
+                e.preventDefault();
+                if (gameState.mode === 'dialog') {
+                    gameState.mode = 'explore';
+                    gameState.dialog = null;
+                }
+            }, { passive: false });
+            document.getElementById('dpadConfirm').addEventListener('click', () => {
+                if (gameState.mode === 'dialog') {
+                    gameState.mode = 'explore';
+                    gameState.dialog = null;
+                }
+            });
         }
 
         buildCharGrid();

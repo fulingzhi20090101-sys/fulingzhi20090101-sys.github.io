@@ -1,4 +1,4 @@
-const TILE_SIZE = 40;
+const TILE_SIZE = Math.max(40, Math.min(64, Math.floor(Math.min(window.innerWidth, window.innerHeight) / 10)));
 let canvas, ctx;
 let gameState = null;
 let camX = 0, camY = 0, camReady = false;
