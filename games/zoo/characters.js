@@ -1,0 +1,186 @@
+const CHARACTERS = [
+    {
+        id: 'lvdongbin',
+        name: '吕洞宾',
+        title: '剑仙',
+        emoji: '⚔️',
+        color: '#3498db',
+        desc: '八仙之首，手持青锋宝剑，正气凛然。',
+        baseStats: { hp: 120, mp: 80, atk: 18, def: 12, spd: 15 },
+        skills: [
+            { name: '御剑术', cost: 10, dmg: 25, desc: '飞剑攻击敌人' },
+            { name: '纯阳剑气', cost: 20, dmg: 45, desc: '强力剑气横扫' },
+        ],
+    },
+    {
+        id: 'hexiangu',
+        name: '何仙姑',
+        title: '荷仙',
+        emoji: '🪷',
+        color: '#e91e8f',
+        desc: '手持荷花，擅长治愈术，温柔善良。',
+        baseStats: { hp: 90, mp: 120, atk: 10, def: 10, spd: 14 },
+        skills: [
+            { name: '荷花疗愈', cost: 12, dmg: -30, desc: '恢复生命值' },
+            { name: '莲花绽放', cost: 18, dmg: 30, desc: '花瓣攻击敌人' },
+        ],
+    },
+    {
+        id: 'tieguaili',
+        name: '铁拐李',
+        title: '铁仙',
+        emoji: '🏺',
+        color: '#8b4513',
+        desc: '背负葫芦，内含仙丹妙药，防御极强。',
+        baseStats: { hp: 160, mp: 60, atk: 14, def: 20, spd: 8 },
+        skills: [
+            { name: '葫芦护盾', cost: 10, dmg: 0, desc: '提升防御力', buff: { def: 8, turns: 3 } },
+            { name: '铁拐横扫', cost: 15, dmg: 35, desc: '铁拐猛击' },
+        ],
+    },
+    {
+        id: 'hanzhongli',
+        name: '汉钟离',
+        title: '扇仙',
+        emoji: '🪭',
+        color: '#e67e22',
+        desc: '手持芭蕉扇，豪爽大方，力大无穷。',
+        baseStats: { hp: 140, mp: 70, atk: 20, def: 16, spd: 10 },
+        skills: [
+            { name: '芭蕉扇风', cost: 12, dmg: 30, desc: '狂风攻击' },
+            { name: '醉仙拳', cost: 20, dmg: 50, desc: '醉态拳法，威力巨大' },
+        ],
+    },
+    {
+        id: 'zhangguolao',
+        name: '张果老',
+        title: '鼓仙',
+        emoji: '🥁',
+        color: '#9b59b6',
+        desc: '倒骑毛驴，精通法术，智慧过人。',
+        baseStats: { hp: 100, mp: 110, atk: 16, def: 11, spd: 12 },
+        skills: [
+            { name: '渔鼓声波', cost: 14, dmg: 35, desc: '音波攻击' },
+            { name: '倒转乾坤', cost: 25, dmg: 55, desc: '强力法术攻击' },
+        ],
+    },
+    {
+        id: 'lancaihe',
+        name: '蓝采和',
+        title: '花仙',
+        emoji: '🌸',
+        color: '#1abc9c',
+        desc: '手提花篮，性格活泼，歌声动人。',
+        baseStats: { hp: 95, mp: 100, atk: 13, def: 9, spd: 18 },
+        skills: [
+            { name: '花雨缤纷', cost: 12, dmg: 28, desc: '花瓣如雨攻击' },
+            { name: '仙歌鼓舞', cost: 15, dmg: 0, desc: '鼓舞士气，提升攻击', buff: { atk: 6, turns: 3 } },
+        ],
+    },
+    {
+        id: 'hanxiangzi',
+        name: '韩湘子',
+        title: '笛仙',
+        emoji: '🎵',
+        color: '#2ecc71',
+        desc: '横笛一曲百花开，笛声可安抚万物。',
+        baseStats: { hp: 100, mp: 100, atk: 14, def: 10, spd: 16 },
+        skills: [
+            { name: '仙笛妙音', cost: 10, dmg: 25, desc: '笛声攻击' },
+            { name: '百花齐放', cost: 20, dmg: 40, desc: '召唤百花攻击' },
+        ],
+    },
+    {
+        id: 'caoguojiu',
+        name: '曹国舅',
+        title: '板仙',
+        emoji: '🎭',
+        color: '#f39c12',
+        desc: '手持玉板，出身皇族，气度不凡。',
+        baseStats: { hp: 110, mp: 90, atk: 16, def: 14, spd: 13 },
+        skills: [
+            { name: '玉板击', cost: 10, dmg: 28, desc: '玉板攻击' },
+            { name: '皇族威压', cost: 18, dmg: 40, desc: '威压之力打击敌人' },
+        ],
+    },
+];
+
+const MONSTERS = {
+    ticket_guard: {
+        name: '检票员老王',
+        emoji: '👷',
+        hp: 30, atk: 8, def: 5, spd: 10,
+        drops: { exp: 10, gold: 5 },
+        dialog: '你没买票就想进来？',
+        isBoss: false,
+    },
+    baby_elephant: {
+        name: '小象皮皮',
+        emoji: '🐘',
+        hp: 60, atk: 12, def: 10, spd: 6,
+        drops: { exp: 20, gold: 10 },
+        dialog: '噗噗～不要碰我的鼻子！',
+        isBoss: false,
+    },
+    angry_elephant: {
+        name: '暴怒大象',
+        emoji: '🐘',
+        hp: 150, atk: 22, def: 18, spd: 5,
+        drops: { exp: 80, gold: 50 },
+        dialog: '吼！！谁惹我生气了！！',
+        isBoss: true,
+    },
+    parrot: {
+        name: '话痨鹦鹉',
+        emoji: '🦜',
+        hp: 40, atk: 10, def: 6, spd: 16,
+        drops: { exp: 15, gold: 8 },
+        dialog: '你好你好！学你说话！',
+        isBoss: false,
+    },
+    peacock: {
+        name: '骄傲孔雀',
+        emoji: '🦚',
+        hp: 70, atk: 14, def: 8, spd: 14,
+        drops: { exp: 25, gold: 15 },
+        dialog: '看我的尾巴多漂亮！你不配！',
+        isBoss: false,
+    },
+    phoenix: {
+        name: '火凤凰',
+        emoji: '🔥',
+        hp: 200, atk: 28, def: 15, spd: 12,
+        drops: { exp: 120, gold: 80 },
+        dialog: '凡人，你胆敢踏入百鸟之王的领地！',
+        isBoss: true,
+    },
+};
+
+const NPCS = {
+    ticket_seller: {
+        name: '售票大妈',
+        emoji: '👩',
+        dialogs: [
+            '欢迎来到动物园！票价10金币一张。',
+            '大象馆往北走，百鸟园在大象馆东边。',
+            '听说最近动物园里有些奇怪的事情发生...',
+        ],
+    },
+    zookeeper: {
+        name: '饲养员小李',
+        emoji: '🧑‍🌾',
+        dialogs: [
+            '大象最近脾气不太好，小心点。',
+            '如果你能帮我安抚暴怒的大象，我给你奖励！',
+        ],
+    },
+    bird_keeper: {
+        name: '鸟语者老张',
+        emoji: '🧓',
+        dialogs: [
+            '百鸟园里的鸟儿最近很躁动。',
+            '传说深处住着一只火凤凰...',
+            '只有真正的勇者才能见到她。',
+        ],
+    },
+};

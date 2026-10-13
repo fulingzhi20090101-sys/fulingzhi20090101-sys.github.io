@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>动物园历险记 | 老付家</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e67e22; --gold: #f1c40f; --bg: #1a1a2e; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: #fff; overflow: hidden; touch-action: manipulation; }
+        html, body { width: 100%; height: 100%; }
+
+        #titleScreen {
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        }
+        .title-logo { font-size: 2.8rem; font-weight: bold; margin-bottom: 8px; text-shadow: 0 0 20px rgba(241,196,15,0.5); }
+        .title-sub { color: #aaa; font-size: 1rem; margin-bottom: 30px; }
+        .char-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 400px; width: 90%; margin-bottom: 20px; }
+        .char-card { background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 14px 8px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .char-card:hover, .char-card:active { border-color: var(--gold); background: rgba(241,196,15,0.1); transform: translateY(-3px); }
+        .char-card.selected { border-color: var(--gold); background: rgba(241,196,15,0.15); box-shadow: 0 0 15px rgba(241,196,15,0.3); }
+        .char-card .emoji { font-size: 1.8rem; margin-bottom: 4px; }
+        .char-card .name { font-size: 0.8rem; font-weight: bold; }
+        .char-card .title { font-size: 0.65rem; color: #aaa; margin-top: 2px; }
+        .char-detail { max-width: 400px; width: 90%; background: rgba(255,255,255,0.06); border-radius: 14px; padding: 18px; margin-bottom: 20px; min-height: 90px; }
+        .char-detail .d-name { font-size: 1.2rem; font-weight: bold; color: var(--gold); margin-bottom: 6px; }
+        .char-detail .d-desc { font-size: 0.85rem; color: #ccc; margin-bottom: 10px; }
+        .char-detail .d-stats { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8rem; }
+        .char-detail .d-stats span { background: rgba(255,255,255,0.1); padding: 3px 10px; border-radius: 8px; }
+        .start-btn { background: linear-gradient(135deg, var(--gold), #f39c12); color: #fff; border: none; padding: 14px 50px; border-radius: 14px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(241,196,15,0.4); }
+        .start-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .back-link { color: #7f8c8d; text-decoration: none; font-size: 0.85rem; margin-top: 20px; }
+
+        #gameScreen { display: none; width: 100%; height: 100%; position: relative; }
+        #gameCanvas { display: block; width: 100%; height: 100%; background: #1a1a2e; }
+
+        .d-pad { position: fixed; bottom: 20px; left: 20px; z-index: 10; display: none; }
+        .d-pad button { position: absolute; width: 50px; height: 50px; border: none; background: rgba(255,255,255,0.15); color: #fff; font-size: 1.4rem; border-radius: 12px; cursor: pointer; }
+        .d-pad button:active { background: rgba(255,255,255,0.3); }
+        .d-pad .up { left: 55px; top: 0; }
+        .d-pad .down { left: 55px; top: 110px; }
+        .d-pad .left { left: 0; top: 55px; }
+        .d-pad .right { left: 110px; top: 55px; }
+
+        @media (pointer: coarse) {
+            .d-pad { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <div id="titleScreen">
+        <div class="title-logo">🦁 动物园历险记</div>
+        <div class="title-sub">选择你的角色</div>
+        <div class="char-grid" id="charGrid"></div>
+        <div class="char-detail" id="charDetail">
+            <div style="color:#888;text-align:center;padding:20px">← 点击选择一个角色</div>
+        </div>
+        <button class="start-btn" id="startBtn" disabled onclick="startGame()">开始冒险</button>
+        <a href="../../index.html" class="back-link">← 返回主页</a>
+    </div>
+
+    <div id="gameScreen">
+        <canvas id="gameCanvas"></canvas>
+        <div class="d-pad" id="dpad">
+            <button class="up" onclick="movePlayer(0,-1)">▲</button>
+            <button class="down" onclick="movePlayer(0,1)">▼</button>
+            <button class="left" onclick="movePlayer(-1,0)">◀</button>
+            <button class="right" onclick="movePlayer(1,0)">▶</button>
+        </div>
+    </div>
+
+    <script src="characters.js"></script>
+    <script src="maps.js"></script>
+    <script src="game.js"></script>
+    <script>
+        let selectedChar = null;
+
+        function buildCharGrid() {
+            const grid = document.getElementById('charGrid');
+            CHARACTERS.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'char-card';
+                div.innerHTML = '<div class="emoji">' + c.emoji + '</div><div class="name">' + c.name + '</div><div class="title">' + c.title + '</div>';
+                div.onclick = () => selectChar(c.id);
+                div.dataset.id = c.id;
+                grid.appendChild(div);
+            });
+        }
+
+        function selectChar(id) {
+            selectedChar = id;
+            document.querySelectorAll('.char-card').forEach(c => {
+                c.classList.toggle('selected', c.dataset.id === id);
+            });
+            const c = CHARACTERS.find(ch => ch.id === id);
+            const s = c.baseStats;
+            document.getElementById('charDetail').innerHTML =
+                '<div class="d-name">' + c.emoji + ' ' + c.name + ' · ' + c.title + '</div>' +
+                '<div class="d-desc">' + c.desc + '</div>' +
+                '<div class="d-stats">' +
+                '<span>❤️ ' + s.hp + '</span>' +
+                '<span>💧 ' + s.mp + '</span>' +
+                '<span>⚔️ ' + s.atk + '</span>' +
+                '<span>🛡️ ' + s.def + '</span>' +
+                '<span>💨 ' + s.spd + '</span>' +
+                '</div>';
+            document.getElementById('startBtn').disabled = false;
+        }
+
+        function startGame() {
+            if (!selectedChar) return;
+            document.getElementById('titleScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'block';
+            initGame(selectedChar);
+
+            const canvas = document.getElementById('gameCanvas');
+            canvas.addEventListener('click', e => {
+                const rect = canvas.getBoundingClientRect();
+                const cx = e.clientX - rect.left;
+                const cy = e.clientY - rect.top;
+                if (gameState.mode === 'battle') {
+                    handleBattleClick(cx, cy);
+                } else if (gameState.mode === 'dialog') {
+                    gameState.mode = 'explore';
+                    gameState.dialog = null;
+                }
+            });
+            canvas.addEventListener('touchstart', e => {
+                if (gameState.mode === 'battle') {
+                    const rect = canvas.getBoundingClientRect();
+                    const t = e.touches[0];
+                    handleBattleClick(t.clientX - rect.left, t.clientY - rect.top);
+                }
+            }, { passive: true });
+        }
+
+        buildCharGrid();
+    </script>
+</body>
+</html>
