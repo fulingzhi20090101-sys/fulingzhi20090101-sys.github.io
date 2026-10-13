@@ -195,13 +195,17 @@ function vipCloudSync(userId) {
     vipSyncAvatarFromCloud(userId);
 }
 
+let _avatarDirty = false;
+
 function vipSaveAvatar(userId, emoji) {
+    _avatarDirty = true;
     try { localStorage.setItem('vip_' + userId + '_avatar', emoji); } catch(e) {}
     _apiPost('/api/avatar/' + userId, { avatar: emoji });
 }
 
 function vipSyncAvatarFromCloud(userId) {
     _apiGet('/api/avatar/' + userId).then(data => {
+        if (_avatarDirty) return;
         if (data && data.avatar) {
             try { localStorage.setItem('vip_' + userId + '_avatar', data.avatar); } catch(e) {}
             const el = document.getElementById('currentAvatar');
