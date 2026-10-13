@@ -47,13 +47,14 @@ const MAPS = {
         playerStart: { x: 7, y: 10 },
         npcs: [
             { id: 'ticket_seller', x: 5, y: 5 },
+            { id: 'vending_machine', x: 10, y: 5 },
         ],
         encounters: [],
         bosses: [
             { monsterId: 'ticket_guard', x: 7, y: 8, defeated: false },
         ],
         exits: [
-            { x: 7, y: 0, toMap: 'elephant_house', toX: 7, toY: 11, label: '→ 大象馆' },
+            { x: 7, y: 0, toMap: 'elephant_house', toX: 7, toY: 11, label: '→ 大象馆', requireTicket: true },
         ],
         enterMsg: '你来到了动物园的售票处。一座小木屋坐落在入口旁。',
     },
@@ -81,6 +82,8 @@ const MAPS = {
         playerStart: { x: 7, y: 10 },
         npcs: [
             { id: 'zookeeper', x: 8, y: 6 },
+            { id: 'vending_machine', x: 3, y: 6 },
+            { id: 'ice_cream_cart', x: 12, y: 6 },
         ],
         encounters: [],
         bosses: [
@@ -116,6 +119,7 @@ const MAPS = {
         playerStart: { x: 1, y: 6 },
         npcs: [
             { id: 'bird_keeper', x: 7, y: 7 },
+            { id: 'vending_machine', x: 11, y: 4 },
         ],
         encounters: [],
         bosses: [
