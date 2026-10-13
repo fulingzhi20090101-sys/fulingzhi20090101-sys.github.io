@@ -111,9 +111,23 @@
             _apiGet('/api/admin/all').then(data => {
                 if (!data) return;
                 for (const user of MANAGED_USERS) {
-                    if (data[user.id]) {
-                        if (data[user.id].balance) VipCurrency.setBalance(user.id, data[user.id].balance);
+                    const d = data[user.id];
+                    if (!d) continue;
+                    if (d.balance) VipCurrency.setBalance(user.id, d.balance);
+                    if (d.time) {
+                        try { localStorage.setItem('vip_time_' + user.id, JSON.stringify(d.time)); } catch(e) {}
                     }
+                    if (d.avatar) {
+                        try { localStorage.setItem('vip_' + user.id + '_avatar', d.avatar); } catch(e) {}
+                    }
+                }
+                for (const user of MANAGED_USERS) {
+                    _apiGet('/api/transactions/' + user.id).then(txs => {
+                        if (Array.isArray(txs) && txs.length > 0) {
+                            try { localStorage.setItem('vip_tx_' + user.id, JSON.stringify(txs)); } catch(e) {}
+                        }
+                        buildDashboard();
+                    });
                 }
                 buildDashboard();
             });
