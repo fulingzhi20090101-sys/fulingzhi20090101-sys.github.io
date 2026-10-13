@@ -37,7 +37,7 @@
         #gameScreen { display: none; width: 100%; height: 100%; position: relative; }
         #gameCanvas { display: block; width: 100%; height: 100%; background: #1a1a2e; }
 
-        .d-pad { position: fixed; bottom: 30px; left: 20px; z-index: 10; display: none; width: 180px; height: 180px; }
+        .d-pad { position: fixed; bottom: 30px; right: 20px; z-index: 10; display: none; width: 180px; height: 180px; }
         .d-pad.active { display: block; }
         .d-pad button { position: absolute; width: 56px; height: 56px; border: 2px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.45); color: #fff; font-size: 1.6rem; border-radius: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
         .d-pad button:active, .d-pad button.pressed { background: rgba(255,255,255,0.35); }
@@ -82,9 +82,9 @@
         </div>
     </div>
 
-    <script src="characters.js?v=3"></script>
-    <script src="maps.js?v=3"></script>
-    <script src="game.js?v=3"></script>
+    <script src="characters.js?v=4"></script>
+    <script src="maps.js?v=4"></script>
+    <script src="game.js?v=4"></script>
     <script>
         let selectedChar = null;
         let savedGame = null;
@@ -125,6 +125,13 @@
         }
 
         function showNewGame() {
+            if (savedGame && savedGame.charId) {
+                const ch = CHARACTERS.find(c => c.id === savedGame.charId);
+                const name = ch ? ch.name + ' Lv.' + savedGame.player.level : '未知';
+                if (!confirm('开始新的冒险将覆盖当前存档！\n\n当前存档: ' + name + '\n\n旧存档会在后台保留备份，需要时可以恢复。\n\n确定要开始新冒险吗？')) {
+                    return;
+                }
+            }
             document.getElementById('menuScreen').style.display = 'none';
             document.getElementById('charScreen').style.display = 'flex';
             document.getElementById('titleSub').textContent = '选择你的角色';
@@ -170,6 +177,13 @@
 
         function startNewGame() {
             if (!selectedChar) return;
+            if (savedGame && savedGame.charId) {
+                fetch(SAVE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...savedGame, _backup: true }),
+                }).catch(() => {});
+            }
             enterGame();
             initGame(selectedChar);
         }
