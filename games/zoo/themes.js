@@ -38,156 +38,217 @@ const PALETTES = {
 const TILE_COLORS = {
     classic: null,
     retro: {
-        0: '#9bbc0f',  // EMPTY
-        1: '#306230',  // WALL
-        2: '#8bac0f',  // PATH
-        3: '#9bbc0f',  // GRASS
-        4: '#306230',  // WATER
-        5: '#8bac0f',  // DOOR
-        6: '#306230',  // TREE
-        7: '#306230',  // FENCE
-        8: '#8bac0f',  // FLOOR
+        0: '#9bbc0f', 1: '#306230', 2: '#8bac0f', 3: '#9bbc0f',
+        4: '#306230', 5: '#8bac0f', 6: '#306230', 7: '#306230', 8: '#8bac0f',
     },
     pixel: {
-        0: '#2b2b3d',  // EMPTY
-        1: '#6b4226',  // WALL
-        2: '#c4a46c',  // PATH
-        3: '#4a8c3f',  // GRASS
-        4: '#3a7ecf',  // WATER
-        5: '#d4883a',  // DOOR
-        6: '#2d6b2d',  // TREE
-        7: '#8b6b4a',  // FENCE
-        8: '#b89a7a',  // FLOOR
+        0: '#2b2b3d', 1: '#6b4226', 2: '#c4a46c', 3: '#4a8c3f',
+        4: '#3a7ecf', 5: '#d4883a', 6: '#2d6b2d', 7: '#8b6b4a', 8: '#b89a7a',
     },
 };
 
-// 8x8 pixel sprites for characters (1=dark, 0=transparent)
-// Each sprite is an array of 8 rows, each row is 8 bits
-const PIXEL_SPRITES = {
-    // Player character - simple human figure
+// 16x16 pixel sprites - each sprite is [rows], each row is a 16-bit number
+const SPRITES_16 = {
     player: [
-        0b00111100,
-        0b00111100,
-        0b00011000,
-        0b01111110,
-        0b00011000,
-        0b00011000,
-        0b00110110,
-        0b00100010,
+        0b0000011111000000,
+        0b0000111111100000,
+        0b0000111111100000,
+        0b0000111001100000,
+        0b0000011111000000,
+        0b0000001110000000,
+        0b0001111111110000,
+        0b0011101110111000,
+        0b0010001110001000,
+        0b0000001110000000,
+        0b0000001110000000,
+        0b0000011011000000,
+        0b0000011011000000,
+        0b0000110001100000,
+        0b0000110001100000,
+        0b0001110001110000,
     ],
-    // NPC - person with hat
     npc: [
-        0b01111110,
-        0b00111100,
-        0b00111100,
-        0b00011000,
-        0b01111110,
-        0b00011000,
-        0b00110110,
-        0b00100010,
+        0b0001111111100000,
+        0b0001111111100000,
+        0b0000111111000000,
+        0b0000111111000000,
+        0b0000110011000000,
+        0b0000011110000000,
+        0b0000001100000000,
+        0b0001111111100000,
+        0b0011110011110000,
+        0b0010001100010000,
+        0b0000001100000000,
+        0b0000001100000000,
+        0b0000011110000000,
+        0b0000110001100000,
+        0b0000110001100000,
+        0b0001110001110000,
     ],
-    // Boss/Monster - large creature
-    boss: [
-        0b01100110,
-        0b11111111,
-        0b11011011,
-        0b11111111,
-        0b01111110,
-        0b11111111,
-        0b10000001,
-        0b01000010,
-    ],
-    // Elephant
     elephant: [
-        0b01110000,
-        0b11111100,
-        0b11111110,
-        0b11001111,
-        0b11001100,
-        0b11111100,
-        0b11011010,
-        0b11011010,
+        0b0000000001110000,
+        0b0011100011111000,
+        0b0111110111111100,
+        0b1111111111111110,
+        0b1111111111111110,
+        0b1111111111111110,
+        0b1111100111111100,
+        0b0111100011111000,
+        0b0111100001110000,
+        0b0111100001110000,
+        0b1111110011111100,
+        0b1111110011111100,
+        0b1100110011001100,
+        0b1100110011001100,
+        0b1100110011001100,
+        0b1110110011011100,
     ],
-    // Bird
     bird: [
-        0b00010000,
-        0b00111000,
-        0b01111100,
-        0b11111110,
-        0b00111000,
-        0b00010000,
-        0b00101000,
-        0b00000000,
+        0b0000000000000000,
+        0b0000001100000000,
+        0b0000011110000000,
+        0b0000111111000000,
+        0b0000111111000000,
+        0b0001111111100000,
+        0b0111111111100000,
+        0b1111111111111100,
+        0b1111111111111110,
+        0b0110111111110000,
+        0b0000111111000000,
+        0b0000011110000000,
+        0b0000011110000000,
+        0b0000010010000000,
+        0b0000010010000000,
+        0b0000011110000000,
     ],
-    // Fire (phoenix)
     fire: [
-        0b00010000,
-        0b00111000,
-        0b01010100,
-        0b01111100,
-        0b11111110,
-        0b01111100,
-        0b00111000,
-        0b00010000,
+        0b0000001100000000,
+        0b0000011110000000,
+        0b0000011110000000,
+        0b0001111111100000,
+        0b0011101101110000,
+        0b0111111111111000,
+        0b0111111111111000,
+        0b1111111111111100,
+        0b1111110011111100,
+        0b0111111111111000,
+        0b0111111111111000,
+        0b0011111111110000,
+        0b0001111111100000,
+        0b0001110111100000,
+        0b0000100001000000,
+        0b0001100001100000,
     ],
-    // Guard/Worker
     guard: [
-        0b00111100,
-        0b01111110,
-        0b00111100,
-        0b00011000,
-        0b01111110,
-        0b00011000,
-        0b00011000,
-        0b00100100,
+        0b0000111111000000,
+        0b0001111111100000,
+        0b0011111111110000,
+        0b0000111111000000,
+        0b0000110011000000,
+        0b0000011110000000,
+        0b0000001100000000,
+        0b0001111111100000,
+        0b0011111111110000,
+        0b0010011110010000,
+        0b0000001100000000,
+        0b0000001100000000,
+        0b0000011110000000,
+        0b0000110001100000,
+        0b0000110001100000,
+        0b0001110001110000,
     ],
-    // Door
-    door: [
-        0b11111111,
-        0b10000001,
-        0b10000001,
-        0b10001001,
-        0b10001001,
-        0b10000001,
-        0b10000001,
-        0b11111111,
+    boss: [
+        0b0011000000110000,
+        0b0111100001111000,
+        0b0111111111111000,
+        0b1111111111111100,
+        0b1111100001111100,
+        0b1110111110111100,
+        0b1111100001111100,
+        0b1111111111111100,
+        0b0111111111111000,
+        0b0111111111111000,
+        0b1111111111111100,
+        0b1100011110001100,
+        0b1100000000001100,
+        0b0110000000011000,
+        0b0011000000110000,
+        0b0001100001100000,
     ],
-    // Tree
     tree: [
-        0b00011000,
-        0b00111100,
-        0b01111110,
-        0b11111111,
-        0b01111110,
-        0b11111111,
-        0b00011000,
-        0b00011000,
+        0b0000001100000000,
+        0b0000011110000000,
+        0b0000111111000000,
+        0b0001111111100000,
+        0b0011111111110000,
+        0b0111111111111000,
+        0b0111111111111000,
+        0b1111111111111100,
+        0b0111111111111000,
+        0b0011111111110000,
+        0b0001111111100000,
+        0b0000001100000000,
+        0b0000001100000000,
+        0b0000001100000000,
+        0b0000001100000000,
+        0b0000011110000000,
     ],
-    // Water wave
+    door: [
+        0b1111111111111100,
+        0b1100000000001100,
+        0b1100000000001100,
+        0b1100011111001100,
+        0b1100110001101100,
+        0b1100110001101100,
+        0b1100110001101100,
+        0b1100110001101100,
+        0b1100110101101100,
+        0b1100110001101100,
+        0b1100110001101100,
+        0b1100110001101100,
+        0b1100110001101100,
+        0b1100110001101100,
+        0b1100110001101100,
+        0b1111111111111100,
+    ],
     water: [
-        0b00000000,
-        0b00000000,
-        0b01010100,
-        0b10101010,
-        0b00000000,
-        0b00000000,
-        0b00101010,
-        0b01010100,
+        0b0000000000000000,
+        0b0000000000000000,
+        0b0000000000000000,
+        0b0100100100100100,
+        0b1011011011011010,
+        0b0100100100100100,
+        0b0000000000000000,
+        0b0000000000000000,
+        0b0000000000000000,
+        0b0000000000000000,
+        0b0010010010010010,
+        0b0101101101101100,
+        0b0010010010010010,
+        0b0000000000000000,
+        0b0000000000000000,
+        0b0000000000000000,
     ],
-    // Fence
     fence: [
-        0b01001000,
-        0b01001000,
-        0b11111110,
-        0b01001000,
-        0b01001000,
-        0b11111110,
-        0b01001000,
-        0b01001000,
+        0b0100010001000100,
+        0b0100010001000100,
+        0b1111111111111110,
+        0b0100010001000100,
+        0b0100010001000100,
+        0b0100010001000100,
+        0b0100010001000100,
+        0b1111111111111110,
+        0b0100010001000100,
+        0b0100010001000100,
+        0b0100010001000100,
+        0b0100010001000100,
+        0b1111111111111110,
+        0b0100010001000100,
+        0b0100010001000100,
+        0b0100010001000100,
     ],
 };
 
-// Map monster IDs to sprite keys
 const MONSTER_SPRITE_MAP = {
     ticket_guard: 'guard',
     baby_elephant: 'elephant',
@@ -197,29 +258,28 @@ const MONSTER_SPRITE_MAP = {
     phoenix: 'fire',
 };
 
-// Pixel colors for colored pixel theme
 const PIXEL_CHAR_COLORS = {
     player: '#e8d44d',
-    ticket_seller: '#e8a0c0',
-    zookeeper: '#6bb5e0',
-    bird_keeper: '#c0a070',
+    ticket_seller: '#e87090',
+    zookeeper: '#60b0e0',
+    bird_keeper: '#c0a060',
     ticket_guard: '#e0a030',
-    baby_elephant: '#a0a0a0',
-    angry_elephant: '#808080',
-    parrot: '#40c040',
+    baby_elephant: '#a0a8b0',
+    angry_elephant: '#707880',
+    parrot: '#40c840',
     peacock: '#4080e0',
     phoenix: '#e04040',
 };
 
 function drawPixelSprite(ctx, spriteKey, x, y, size, color) {
-    const sprite = PIXEL_SPRITES[spriteKey];
+    const sprite = SPRITES_16[spriteKey];
     if (!sprite) return;
-    const px = size / 8;
-    for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-            if (sprite[row] & (1 << (7 - col))) {
+    const px = size / 16;
+    for (let row = 0; row < 16; row++) {
+        for (let col = 0; col < 16; col++) {
+            if (sprite[row] & (1 << (15 - col))) {
                 ctx.fillStyle = color;
-                ctx.fillRect(x + col * px, y + row * px, px, px);
+                ctx.fillRect(x + col * px, y + row * px, Math.ceil(px), Math.ceil(px));
             }
         }
     }
@@ -233,25 +293,25 @@ function getTileColor(tileType) {
 
 function getRetroTilePattern(ctx, tileType, x, y, size) {
     const pal = PALETTES.retro;
-    if (tileType === 6) { // TREE
+    if (tileType === 6) {
         ctx.fillStyle = pal.bg;
         ctx.fillRect(x, y, size, size);
         drawPixelSprite(ctx, 'tree', x, y, size, pal.dark);
         return true;
     }
-    if (tileType === 4) { // WATER
+    if (tileType === 4) {
         ctx.fillStyle = pal.mid;
         ctx.fillRect(x, y, size, size);
         drawPixelSprite(ctx, 'water', x, y, size, pal.dark);
         return true;
     }
-    if (tileType === 7) { // FENCE
+    if (tileType === 7) {
         ctx.fillStyle = pal.bg;
         ctx.fillRect(x, y, size, size);
         drawPixelSprite(ctx, 'fence', x, y, size, pal.dark);
         return true;
     }
-    if (tileType === 5) { // DOOR
+    if (tileType === 5) {
         ctx.fillStyle = pal.light;
         ctx.fillRect(x, y, size, size);
         drawPixelSprite(ctx, 'door', x, y, size, pal.dark);
@@ -261,25 +321,25 @@ function getRetroTilePattern(ctx, tileType, x, y, size) {
 }
 
 function getPixelTilePattern(ctx, tileType, x, y, size) {
-    if (tileType === 6) { // TREE
-        ctx.fillStyle = TILE_COLORS.pixel[3]; // grass bg
+    if (tileType === 6) {
+        ctx.fillStyle = TILE_COLORS.pixel[3];
         ctx.fillRect(x, y, size, size);
-        drawPixelSprite(ctx, 'tree', x, y, size, '#1a4a1a');
+        drawPixelSprite(ctx, 'tree', x, y, size, '#1a5a1a');
         return true;
     }
-    if (tileType === 4) { // WATER
+    if (tileType === 4) {
         ctx.fillStyle = TILE_COLORS.pixel[4];
         ctx.fillRect(x, y, size, size);
         drawPixelSprite(ctx, 'water', x, y, size, '#2060a0');
         return true;
     }
-    if (tileType === 7) { // FENCE
+    if (tileType === 7) {
         ctx.fillStyle = TILE_COLORS.pixel[3];
         ctx.fillRect(x, y, size, size);
         drawPixelSprite(ctx, 'fence', x, y, size, '#5a4030');
         return true;
     }
-    if (tileType === 5) { // DOOR
+    if (tileType === 5) {
         ctx.fillStyle = TILE_COLORS.pixel[2];
         ctx.fillRect(x, y, size, size);
         drawPixelSprite(ctx, 'door', x, y, size, '#a06020');
