@@ -1,6 +1,7 @@
 const TILE_SIZE = 40;
 let canvas, ctx;
 let gameState = null;
+let camX = 0, camY = 0, camReady = false;
 
 function initGame(charId) {
     const charData = CHARACTERS.find(c => c.id === charId);
@@ -65,6 +66,7 @@ function loadMap(mapId, toX, toY) {
         gameState.player.x = map.playerStart.x;
         gameState.player.y = map.playerStart.y;
     }
+    camReady = false;
     showMessage(map.enterMsg);
 }
 
@@ -384,10 +386,29 @@ function render() {
     }
 }
 
+function updateCamera() {
+    const px = gameState.player.x * TILE_SIZE + TILE_SIZE / 2;
+    const py = gameState.player.y * TILE_SIZE + TILE_SIZE / 2;
+    if (!camReady) { camX = px; camY = py; camReady = true; return; }
+    const edgeX = canvas.width * 0.32;
+    const edgeY = canvas.height * 0.32;
+    const sx = px - camX + canvas.width / 2;
+    const sy = py - camY + canvas.height / 2;
+    if (sx < edgeX) camX -= (edgeX - sx);
+    if (sx > canvas.width - edgeX) camX += (sx - (canvas.width - edgeX));
+    if (sy < edgeY) camY -= (edgeY - sy);
+    if (sy > canvas.height - edgeY) camY += (sy - (canvas.height - edgeY));
+    const map = getMap();
+    const mw = map.width * TILE_SIZE, mh = map.height * TILE_SIZE;
+    camX = Math.max(canvas.width / 2, Math.min(mw - canvas.width / 2, camX));
+    camY = Math.max(canvas.height / 2, Math.min(mh - canvas.height / 2, camY));
+}
+
 function renderMap() {
     const map = getMap();
-    const offsetX = Math.floor(canvas.width / 2 - gameState.player.x * TILE_SIZE - TILE_SIZE / 2);
-    const offsetY = Math.floor(canvas.height / 2 - gameState.player.y * TILE_SIZE - TILE_SIZE / 2);
+    updateCamera();
+    const offsetX = Math.floor(canvas.width / 2 - camX);
+    const offsetY = Math.floor(canvas.height / 2 - camY);
 
     for (let y = 0; y < map.height; y++) {
         for (let x = 0; x < map.width; x++) {
@@ -505,12 +526,12 @@ function renderHUD() {
     ctx.fillText('EXP ' + p.exp + '/' + p.expNext, pad + 70, pad + 58);
 
     const mapName = getMap().name;
+    ctx.font = 'bold 14px sans-serif';
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     const mnw = ctx.measureText(mapName).width + 20;
     ctx.roundRect(canvas.width - mnw - pad, pad, mnw, 28, 8);
     ctx.fill();
     ctx.fillStyle = '#f1c40f';
-    ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(mapName, canvas.width - pad - 10, pad + 7);
 }
@@ -547,13 +568,13 @@ function renderDialog() {
 
 function renderMessage() {
     const pad = 20;
+    ctx.font = '13px sans-serif';
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
     const tw = ctx.measureText(gameState.message).width;
     const w = Math.min(tw + 40, canvas.width - 40);
     ctx.roundRect((canvas.width - w) / 2, canvas.height - 60, w, 36, 10);
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = '13px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(gameState.message, canvas.width / 2, canvas.height - 42);
