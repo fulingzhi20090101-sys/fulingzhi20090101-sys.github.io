@@ -123,24 +123,28 @@ function _startGameLoop() {
     }
 }
 
+let virtualW = VIRTUAL_WIDTH, virtualH = VIRTUAL_HEIGHT;
+
 function resizeCanvas() {
     const container = canvas.parentElement;
     canvas.width = container.clientWidth;
     canvas.height = container.clientHeight;
 
     if (isVirtualCanvas()) {
+        const scale = canvas.width / VIRTUAL_WIDTH;
+        virtualW = VIRTUAL_WIDTH;
+        virtualH = Math.ceil(canvas.height / scale);
         if (!worldCanvas) {
             worldCanvas = document.createElement('canvas');
-            worldCanvas.width = VIRTUAL_WIDTH;
-            worldCanvas.height = VIRTUAL_HEIGHT;
             worldCtx = worldCanvas.getContext('2d');
-            worldCtx.imageSmoothingEnabled = false;
         }
-        const scale = Math.min(canvas.width / VIRTUAL_WIDTH, canvas.height / VIRTUAL_HEIGHT);
-        gameArea.w = Math.floor(VIRTUAL_WIDTH * scale);
-        gameArea.h = Math.floor(VIRTUAL_HEIGHT * scale);
-        gameArea.x = Math.floor((canvas.width - gameArea.w) / 2);
+        worldCanvas.width = virtualW;
+        worldCanvas.height = virtualH;
+        worldCtx.imageSmoothingEnabled = false;
+        gameArea.x = 0;
         gameArea.y = 0;
+        gameArea.w = canvas.width;
+        gameArea.h = canvas.height;
     } else {
         gameArea.x = 0;
         gameArea.y = 0;
@@ -655,8 +659,8 @@ function render() {
 function updateCamera() {
     const ts = getTileSize();
     const vc = isVirtualCanvas();
-    const viewW = vc ? VIRTUAL_WIDTH : canvas.width;
-    const viewH = vc ? VIRTUAL_HEIGHT : canvas.height;
+    const viewW = vc ? virtualW : canvas.width;
+    const viewH = vc ? virtualH : canvas.height;
 
     const px = gameState.player.x * ts + ts / 2;
     const py = gameState.player.y * ts + ts / 2;
@@ -689,7 +693,7 @@ function renderMap() {
         ZooEngine.renderWorld(
             worldCtx, map, ms, gameState.player,
             gameState.otherPlayers, camX, camY,
-            VIRTUAL_WIDTH, VIRTUAL_HEIGHT, currentTheme
+            virtualW, virtualH, currentTheme
         );
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(worldCanvas, gameArea.x, gameArea.y, gameArea.w, gameArea.h);
