@@ -192,6 +192,22 @@ function vipCloudSync(userId) {
         }
     });
     VipCurrency.syncTransactionsFromCloud(userId);
+    vipSyncAvatarFromCloud(userId);
+}
+
+function vipSaveAvatar(userId, emoji) {
+    try { localStorage.setItem('vip_' + userId + '_avatar', emoji); } catch(e) {}
+    _apiPost('/api/avatar/' + userId, { avatar: emoji });
+}
+
+function vipSyncAvatarFromCloud(userId) {
+    _apiGet('/api/avatar/' + userId).then(data => {
+        if (data && data.avatar) {
+            try { localStorage.setItem('vip_' + userId + '_avatar', data.avatar); } catch(e) {}
+            const el = document.getElementById('currentAvatar');
+            if (el) el.textContent = data.avatar;
+        }
+    });
 }
 
 function formatSeconds(s) {

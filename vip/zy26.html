@@ -140,7 +140,7 @@
             const left = _avatarChangesLeft();
             if (left <= 0) { showToast('今天已经换了3次头像，明天再来吧！'); return; }
             document.getElementById('currentAvatar').textContent = emoji;
-            try { localStorage.setItem(USER_KEY + '_avatar', emoji); } catch(e) {}
+            vipSaveAvatar('zy26', emoji);
             _recordAvatarChange();
             document.getElementById('avatarPicker').classList.remove('active');
             buildPicker();

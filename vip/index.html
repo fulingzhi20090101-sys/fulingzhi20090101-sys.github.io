@@ -127,17 +127,27 @@
         });
 
         function loadSavedAvatars() {
-            try {
-                const cards = document.querySelectorAll('.user-card');
-                const uids = ['zy26', 'george', 'jerry'];
-                cards.forEach((card, i) => {
+            const cards = document.querySelectorAll('.user-card');
+            const uids = ['zy26', 'george', 'jerry'];
+            cards.forEach((card, i) => {
+                try {
                     const saved = localStorage.getItem('vip_' + uids[i] + '_avatar');
                     if (saved) {
                         card.querySelector('.user-avatar').textContent = saved;
                         users[uids[i]].avatar = saved;
                     }
-                });
-            } catch(e) {}
+                } catch(e) {}
+            });
+            const API = 'https://laofujia-api.laofujia-worker.workers.dev';
+            uids.forEach((uid, i) => {
+                fetch(API + '/api/avatar/' + uid).then(r => r.json()).then(data => {
+                    if (data && data.avatar) {
+                        cards[i].querySelector('.user-avatar').textContent = data.avatar;
+                        users[uid].avatar = data.avatar;
+                        try { localStorage.setItem('vip_' + uid + '_avatar', data.avatar); } catch(e) {}
+                    }
+                }).catch(() => {});
+            });
         }
         loadSavedAvatars();
     </script>
