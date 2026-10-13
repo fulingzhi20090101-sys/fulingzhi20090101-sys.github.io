@@ -31,7 +31,7 @@ const MAPS = {
         width: 16,
         height: 12,
         tiles: [
-            T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,
+            T,T,T,T,T,T,T,P,T,T,T,T,T,T,T,T,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
             T,G,G,W,W,W,W,D,W,W,W,W,G,G,G,T,
@@ -46,14 +46,14 @@ const MAPS = {
         ],
         playerStart: { x: 7, y: 10 },
         npcs: [
-            { id: 'ticket_seller', x: 7, y: 5 },
+            { id: 'ticket_seller', x: 5, y: 5 },
         ],
         encounters: [],
         bosses: [
             { monsterId: 'ticket_guard', x: 7, y: 8, defeated: false },
         ],
         exits: [
-            { x: 7, y: 3, toMap: 'elephant_house', toX: 7, toY: 10, label: '→ 大象馆' },
+            { x: 7, y: 0, toMap: 'elephant_house', toX: 7, toY: 11, label: '→ 大象馆' },
         ],
         enterMsg: '你来到了动物园的售票处。一座小木屋坐落在入口旁。',
     },
@@ -70,28 +70,25 @@ const MAPS = {
             T,F,F,F,F,F,P,P,P,P,F,F,F,F,F,T,
             T,G,G,G,G,G,P,P,P,P,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,P,G,G,G,G,G,T,
-            T,G,G,G,G,G,P,P,P,P,G,G,G,G,G,T,
+            T,G,G,G,G,G,P,P,P,P,G,G,G,P,P,P,
             T,F,F,F,F,F,P,P,P,P,F,F,F,F,F,T,
             T,G,G,G,A,A,P,P,P,P,G,G,G,G,G,T,
             T,G,G,G,A,G,P,P,P,P,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,P,G,G,G,G,G,T,
-            T,T,T,T,T,T,T,D,T,T,T,T,T,D,T,T,
+            T,T,T,T,T,T,T,D,T,T,T,T,T,T,T,T,
             E,E,E,E,E,E,E,E,E,E,E,E,E,E,E,E,
         ],
         playerStart: { x: 7, y: 10 },
         npcs: [
             { id: 'zookeeper', x: 8, y: 6 },
         ],
-        encounters: [
-            { monsterId: 'baby_elephant', zones: [{ x: 1, y: 1, w: 4, h: 3 }, { x: 11, y: 1, w: 4, h: 3 }], rate: 0.12 },
-            { monsterId: 'baby_elephant', zones: [{ x: 1, y: 9, w: 4, h: 3 }, { x: 11, y: 9, w: 4, h: 3 }], rate: 0.12 },
-        ],
+        encounters: [],
         bosses: [
             { monsterId: 'angry_elephant', x: 7, y: 2, defeated: false },
         ],
         exits: [
-            { x: 7, y: 12, toMap: 'ticket_office', toX: 7, toY: 4, label: '→ 售票处' },
-            { x: 13, y: 12, toMap: 'bird_garden', toX: 1, toY: 6, label: '→ 百鸟园' },
+            { x: 7, y: 12, toMap: 'ticket_office', toX: 7, toY: 1, label: '→ 售票处' },
+            { x: 15, y: 7, toMap: 'bird_garden', toX: 1, toY: 6, label: '→ 百鸟园' },
         ],
         enterMsg: '大象馆里弥漫着泥土和青草的气息。远处传来大象的叫声。',
     },
@@ -107,7 +104,7 @@ const MAPS = {
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
             T,G,G,G,G,P,P,G,P,P,G,G,G,G,G,T,
             T,G,G,G,P,P,G,G,G,P,P,G,G,G,G,T,
-            T,P,P,P,P,G,G,G,G,G,P,P,P,P,P,T,
+            P,P,P,P,P,G,G,G,G,G,P,P,P,P,P,T,
             T,G,G,G,P,P,G,G,G,P,P,G,G,G,G,T,
             T,G,G,G,G,P,P,G,P,P,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
@@ -120,15 +117,12 @@ const MAPS = {
         npcs: [
             { id: 'bird_keeper', x: 7, y: 7 },
         ],
-        encounters: [
-            { monsterId: 'parrot', zones: [{ x: 1, y: 1, w: 6, h: 5 }, { x: 9, y: 1, w: 6, h: 5 }], rate: 0.10 },
-            { monsterId: 'peacock', zones: [{ x: 1, y: 8, w: 6, h: 5 }, { x: 9, y: 8, w: 6, h: 5 }], rate: 0.10 },
-        ],
+        encounters: [],
         bosses: [
             { monsterId: 'phoenix', x: 7, y: 1, defeated: false },
         ],
         exits: [
-            { x: 0, y: 6, toMap: 'elephant_house', toX: 12, toY: 11, label: '→ 大象馆' },
+            { x: 0, y: 6, toMap: 'elephant_house', toX: 14, toY: 7, label: '→ 大象馆' },
         ],
         enterMsg: '百鸟园中鸟语花香，各种珍禽在枝头鸣唱。',
     },

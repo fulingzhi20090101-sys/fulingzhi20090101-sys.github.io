@@ -49,6 +49,8 @@
         .d-pad .left { left: 0; top: 62px; }
         .d-pad .right { left: 124px; top: 62px; }
         .d-pad .center { left: 62px; top: 62px; font-size: 1.2rem; background: rgba(241,196,15,0.3); border-color: rgba(241,196,15,0.4); }
+        #exitBtn { position: fixed; top: 12px; right: 12px; z-index: 10; display: none; width: 44px; height: 44px; border: 2px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.5); color: #fff; font-size: 1.2rem; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        #exitBtn:active { background: rgba(255,255,255,0.3); }
     </style>
 </head>
 <body>
@@ -76,6 +78,7 @@
 
     <div id="gameScreen">
         <canvas id="gameCanvas"></canvas>
+        <button id="exitBtn" onclick="exitGame()">✕</button>
         <div class="d-pad" id="dpad">
             <button class="up" data-dx="0" data-dy="-1">▲</button>
             <button class="down" data-dx="0" data-dy="1">▼</button>
@@ -85,9 +88,9 @@
         </div>
     </div>
 
-    <script src="characters.js?v=5"></script>
-    <script src="maps.js?v=5"></script>
-    <script src="game.js?v=5"></script>
+    <script src="characters.js?v=6"></script>
+    <script src="maps.js?v=6"></script>
+    <script src="game.js?v=6"></script>
     <script>
         let selectedChar = null;
         let savedGame = null;
@@ -195,6 +198,7 @@
             document.getElementById('titleScreen').style.display = 'none';
             document.getElementById('gameScreen').style.display = 'block';
             document.getElementById('dpad').classList.add('active');
+            document.getElementById('exitBtn').style.display = 'block';
             setupDpad();
 
             const canvas = document.getElementById('gameCanvas');
@@ -204,16 +208,22 @@
                 const cy = e.clientY - rect.top;
                 if (gameState.mode === 'battle') {
                     handleBattleClick(cx, cy);
+                } else if (gameState.mode === 'npc_menu') {
+                    handleNpcMenuClick(cx, cy);
                 } else if (gameState.mode === 'dialog') {
                     gameState.mode = 'explore';
                     gameState.dialog = null;
                 }
             });
             canvas.addEventListener('touchstart', e => {
+                const rect = canvas.getBoundingClientRect();
+                const t = e.touches[0];
+                const cx = t.clientX - rect.left;
+                const cy = t.clientY - rect.top;
                 if (gameState.mode === 'battle') {
-                    const rect = canvas.getBoundingClientRect();
-                    const t = e.touches[0];
-                    handleBattleClick(t.clientX - rect.left, t.clientY - rect.top);
+                    handleBattleClick(cx, cy);
+                } else if (gameState.mode === 'npc_menu') {
+                    handleNpcMenuClick(cx, cy);
                 }
             }, { passive: true });
         }

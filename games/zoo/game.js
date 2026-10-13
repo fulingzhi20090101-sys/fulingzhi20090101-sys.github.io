@@ -3,7 +3,7 @@ let canvas, ctx;
 let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 
-const GAME_VERSION = 'v1.3';
+const GAME_VERSION = 'v1.4';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -169,7 +169,7 @@ function movePlayer(dx, dy) {
     if (map.npcs) {
         for (const n of map.npcs) {
             if (n.x === nx && n.y === ny) {
-                talkToNpc(n.id);
+                showNpcMenu('npc', n.id, null);
                 return;
             }
         }
@@ -179,7 +179,7 @@ function movePlayer(dx, dy) {
     if (ms.bosses) {
         for (const b of ms.bosses) {
             if (!b.defeated && b.x === nx && b.y === ny) {
-                startBattle(b.monsterId, b);
+                showNpcMenu('boss', b.monsterId, b);
                 return;
             }
         }
@@ -197,8 +197,6 @@ function movePlayer(dx, dy) {
     if (!isWalkable(nx, ny)) return;
     gameState.player.x = nx;
     gameState.player.y = ny;
-
-    checkRandomEncounter();
 }
 
 function checkRandomEncounter() {
@@ -226,6 +224,147 @@ function talkToNpc(npcId) {
         onClose: null,
     };
     gameState.mode = 'dialog';
+}
+
+function showNpcMenu(type, id, bossRef) {
+    gameState.npcMenu = { type, id, bossRef };
+    gameState.mode = 'npc_menu';
+}
+
+let npcMenuButtons = [];
+
+function handleNpcMenuAction(action) {
+    const menu = gameState.npcMenu;
+    if (!menu) return;
+
+    if (action === 'talk') {
+        if (menu.type === 'npc') {
+            talkToNpc(menu.id);
+        } else {
+            const mon = MONSTERS[menu.id];
+            gameState.dialog = {
+                speaker: mon.emoji + ' ' + mon.name,
+                text: mon.dialog,
+                onClose: null,
+            };
+            gameState.mode = 'dialog';
+        }
+        gameState.npcMenu = null;
+    } else if (action === 'view') {
+        if (menu.type === 'npc') {
+            const npc = NPCS[menu.id];
+            gameState.dialog = {
+                speaker: '🔍 ' + npc.name,
+                text: npc.info || '暂无信息。',
+                onClose: null,
+            };
+        } else {
+            const mon = MONSTERS[menu.id];
+            gameState.dialog = {
+                speaker: '🔍 ' + mon.name,
+                text: 'HP:' + mon.hp + ' 攻击:' + mon.atk + ' 防御:' + mon.def + ' 速度:' + mon.spd + (mon.isBoss ? ' [BOSS]' : ''),
+                onClose: null,
+            };
+        }
+        gameState.mode = 'dialog';
+        gameState.npcMenu = null;
+    } else if (action === 'battle') {
+        if (menu.type === 'npc') {
+            gameState.dialog = {
+                speaker: NPCS[menu.id].emoji + ' ' + NPCS[menu.id].name,
+                text: '我又不是怪物，你打我干嘛！',
+                onClose: null,
+            };
+            gameState.mode = 'dialog';
+            gameState.npcMenu = null;
+        } else {
+            gameState.npcMenu = null;
+            startBattle(menu.id, menu.bossRef);
+        }
+    } else {
+        gameState.npcMenu = null;
+        gameState.mode = 'explore';
+    }
+}
+
+function handleNpcMenuClick(cx, cy) {
+    for (const btn of npcMenuButtons) {
+        if (cx >= btn.x && cx <= btn.x + btn.w && cy >= btn.y && cy <= btn.y + btn.h) {
+            btn.onClick();
+            return;
+        }
+    }
+}
+
+function renderNpcMenu() {
+    renderMap();
+    renderHUD();
+
+    const menu = gameState.npcMenu;
+    if (!menu) return;
+
+    let name, emoji;
+    if (menu.type === 'npc') {
+        const npc = NPCS[menu.id];
+        name = npc.name;
+        emoji = npc.emoji;
+    } else {
+        const mon = MONSTERS[menu.id];
+        name = mon.name;
+        emoji = mon.emoji;
+    }
+
+    npcMenuButtons = [];
+
+    const boxW = 240, boxH = 220;
+    const boxX = (canvas.width - boxW) / 2;
+    const boxY = (canvas.height - boxH) / 2;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.92)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = '#f1c40f';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    ctx.fillStyle = '#f1c40f';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji + ' ' + name, boxX + boxW / 2, boxY + 28);
+
+    const btnW = boxW - 30;
+    const btnH = 36;
+    const startY = boxY + 55;
+    const gap = 6;
+
+    const options = [
+        { label: '💬 对话', color: '#3498db', action: 'talk' },
+        { label: '🔍 查看', color: '#9b59b6', action: 'view' },
+        { label: '⚔️ 战斗', color: '#e74c3c', action: 'battle' },
+        { label: '👋 离开', color: '#7f8c8d', action: 'leave' },
+    ];
+
+    options.forEach((opt, i) => {
+        const bx = boxX + 15;
+        const by = startY + i * (btnH + gap);
+        ctx.fillStyle = opt.color;
+        ctx.fillRect(bx, by, btnW, btnH);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(opt.label, bx + btnW / 2, by + btnH / 2);
+        npcMenuButtons.push({ x: bx, y: by, w: btnW, h: btnH, onClick: () => handleNpcMenuAction(opt.action) });
+    });
+}
+
+function exitGame() {
+    gameState.mode = 'explore';
+    saveGame();
+    location.reload();
 }
 
 function showMessage(text, duration) {
@@ -388,6 +527,10 @@ function setupInput() {
             }
             return;
         }
+        if (gameState.mode === 'npc_menu') {
+            if (e.key === 'Escape') handleNpcMenuAction('leave');
+            return;
+        }
         if (gameState.mode === 'battle') return;
         if (e.key === 'ArrowUp' || e.key === 'w') movePlayer(0, -1);
         if (e.key === 'ArrowDown' || e.key === 's') movePlayer(0, 1);
@@ -440,6 +583,8 @@ function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (gameState.mode === 'battle') {
         renderBattle();
+    } else if (gameState.mode === 'npc_menu') {
+        renderNpcMenu();
     } else {
         renderMap();
         renderHUD();
