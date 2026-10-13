@@ -39,8 +39,14 @@
         .start-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
         .back-link { color: #7f8c8d; text-decoration: none; font-size: 0.85rem; margin-top: 12px; margin-bottom: 20px; }
 
-        #gameScreen { display: none; width: 100%; height: 100%; position: relative; }
-        #gameCanvas { display: block; width: 100%; height: 100%; background: #1a1a2e; }
+        #gameScreen { display: none; width: 100%; height: 100%; position: relative; justify-content: center; align-items: center; background: #000; }
+        #gameCanvas {
+            display: block; background: #1a1a2e;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: crisp-edges;
+        }
 
         .d-pad { position: fixed; bottom: 30px; right: 20px; z-index: 10; display: none; width: 180px; height: 180px; }
         .d-pad.active { display: block; }
@@ -100,10 +106,10 @@
         </div>
     </div>
 
-    <script src="themes.js?v=10"></script>
-    <script src="characters.js?v=10"></script>
-    <script src="maps.js?v=10"></script>
-    <script src="game.js?v=10"></script>
+    <script src="themes.js?v=11"></script>
+    <script src="characters.js?v=11"></script>
+    <script src="maps.js?v=11"></script>
+    <script src="game.js?v=11"></script>
     <script>
         let selectedChar = null;
         let savedGame = null;
@@ -230,20 +236,18 @@
 
         function enterGame() {
             document.getElementById('titleScreen').style.display = 'none';
-            document.getElementById('gameScreen').style.display = 'block';
+            document.getElementById('gameScreen').style.display = 'flex';
             document.getElementById('dpad').classList.add('active');
             document.getElementById('exitBtn').style.display = 'block';
             setupDpad();
 
             const canvas = document.getElementById('gameCanvas');
             canvas.addEventListener('click', e => {
-                const rect = canvas.getBoundingClientRect();
-                const cx = e.clientX - rect.left;
-                const cy = e.clientY - rect.top;
+                const c = canvasCoords(e.clientX, e.clientY);
                 if (gameState.mode === 'battle') {
-                    handleBattleClick(cx, cy);
+                    handleBattleClick(c.x, c.y);
                 } else if (gameState.mode === 'npc_menu') {
-                    handleNpcMenuClick(cx, cy);
+                    handleNpcMenuClick(c.x, c.y);
                 } else if (gameState.mode === 'dialog') {
                     if (Date.now() - _npcMenuActionTime < 400) return;
                     gameState.mode = 'explore';
@@ -251,14 +255,12 @@
                 }
             });
             canvas.addEventListener('touchstart', e => {
-                const rect = canvas.getBoundingClientRect();
                 const t = e.touches[0];
-                const cx = t.clientX - rect.left;
-                const cy = t.clientY - rect.top;
+                const c = canvasCoords(t.clientX, t.clientY);
                 if (gameState.mode === 'battle') {
-                    handleBattleClick(cx, cy);
+                    handleBattleClick(c.x, c.y);
                 } else if (gameState.mode === 'npc_menu') {
-                    handleNpcMenuClick(cx, cy);
+                    handleNpcMenuClick(c.x, c.y);
                 }
             }, { passive: true });
         }

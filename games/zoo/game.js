@@ -1,11 +1,19 @@
-const TILE_SIZE = Math.max(40, Math.min(64, Math.floor(Math.min(window.innerWidth, window.innerHeight) / 10)));
 let canvas, ctx;
 let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 
-const GAME_VERSION = 'v1.5';
+const GAME_VERSION = 'v2.0';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
+
+function isVirtualCanvas() {
+    return currentTheme !== 'classic';
+}
+
+function getTileSize() {
+    if (isVirtualCanvas()) return RETRO_TILE;
+    return Math.max(40, Math.min(64, Math.floor(Math.min(window.innerWidth, window.innerHeight) / 10)));
+}
 
 function initGame(charId) {
     const charData = CHARACTERS.find(c => c.id === charId);
@@ -29,6 +37,8 @@ function initGame(charId) {
             buffs: [],
             x: 0,
             y: 0,
+            facing: 'down',
+            walkFrame: 0,
         },
         currentMap: null,
         mapState: {},
@@ -68,6 +78,8 @@ function initGameFromSave(save) {
             buffs: [],
             x: save.player.x,
             y: save.player.y,
+            facing: 'down',
+            walkFrame: 0,
         },
         currentMap: save.currentMap,
         mapState: save.mapState || {},
@@ -111,8 +123,30 @@ function _startGameLoop() {
 
 function resizeCanvas() {
     const container = canvas.parentElement;
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+
+    if (isVirtualCanvas()) {
+        canvas.width = VIRTUAL_WIDTH;
+        canvas.height = VIRTUAL_HEIGHT;
+        ctx.imageSmoothingEnabled = false;
+        const scale = Math.min(cw / VIRTUAL_WIDTH, ch / VIRTUAL_HEIGHT);
+        canvas.style.width = Math.floor(VIRTUAL_WIDTH * scale) + 'px';
+        canvas.style.height = Math.floor(VIRTUAL_HEIGHT * scale) + 'px';
+    } else {
+        canvas.width = cw;
+        canvas.height = ch;
+        canvas.style.width = '';
+        canvas.style.height = '';
+    }
+}
+
+function canvasCoords(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height),
+    };
 }
 
 function loadMap(mapId, toX, toY) {
@@ -162,6 +196,11 @@ function movePlayer(dx, dy) {
     if (now - gameState.lastMove < 150) return;
     gameState.lastMove = now;
 
+    if (dy < 0) gameState.player.facing = 'up';
+    else if (dy > 0) gameState.player.facing = 'down';
+    else if (dx < 0) gameState.player.facing = 'left';
+    else if (dx > 0) gameState.player.facing = 'right';
+
     const nx = gameState.player.x + dx;
     const ny = gameState.player.y + dy;
 
@@ -197,6 +236,7 @@ function movePlayer(dx, dy) {
     if (!isWalkable(nx, ny)) return;
     gameState.player.x = nx;
     gameState.player.y = ny;
+    gameState.player.walkFrame = 1 - gameState.player.walkFrame;
 }
 
 function checkRandomEncounter() {
@@ -317,13 +357,14 @@ function renderNpcMenu() {
     }
 
     npcMenuButtons = [];
-
-    const boxW = 240, boxH = 220;
-    const boxX = (canvas.width - boxW) / 2;
-    const boxY = (canvas.height - boxH) / 2;
-
     const pal = PALETTES[currentTheme];
     const isRetro = currentTheme === 'retro';
+    const vc = isVirtualCanvas();
+
+    const boxW = vc ? 140 : 240;
+    const boxH = vc ? 110 : 220;
+    const boxX = (canvas.width - boxW) / 2;
+    const boxY = (canvas.height - boxH) / 2;
 
     ctx.fillStyle = pal ? 'rgba(15,56,15,0.5)' : 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -331,22 +372,21 @@ function renderNpcMenu() {
     ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.92)';
     ctx.fillRect(boxX, boxY, boxW, boxH);
     ctx.strokeStyle = pal ? pal.uiBorder : '#f1c40f';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = vc ? 1 : 2;
     ctx.strokeRect(boxX, boxY, boxW, boxH);
 
     ctx.fillStyle = pal ? pal.accent : '#f1c40f';
-    ctx.font = 'bold 18px sans-serif';
+    ctx.font = vc ? 'bold 9px sans-serif' : 'bold 18px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const titleText = isRetro ? name : (emoji + ' ' + name);
-    ctx.fillText(titleText, boxX + boxW / 2, boxY + 28);
+    ctx.fillText(titleText, boxX + boxW / 2, boxY + (vc ? 12 : 28));
 
-    const btnW = boxW - 30;
-    const btnH = 36;
-    const startY = boxY + 55;
-    const gap = 6;
+    const btnW = boxW - (vc ? 14 : 30);
+    const btnH = vc ? 18 : 36;
+    const startY = boxY + (vc ? 24 : 55);
+    const gap = vc ? 3 : 6;
 
-    const retroLabels = ['对话', '查看', '战斗', '离开'];
     const options = isRetro ? [
         { label: '> 对话', color: pal.mid, action: 'talk' },
         { label: '> 查看', color: pal.mid, action: 'view' },
@@ -360,12 +400,12 @@ function renderNpcMenu() {
     ];
 
     options.forEach((opt, i) => {
-        const bx = boxX + 15;
+        const bx = boxX + (vc ? 7 : 15);
         const by = startY + i * (btnH + gap);
         ctx.fillStyle = opt.color;
         ctx.fillRect(bx, by, btnW, btnH);
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 16px sans-serif';
+        ctx.font = vc ? 'bold 8px sans-serif' : 'bold 16px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(opt.label, bx + btnW / 2, by + btnH / 2);
@@ -457,7 +497,7 @@ function battleAction(action, skillIdx) {
         b.log.push('获得 ' + drops.exp + ' 经验，' + drops.gold + ' 金币！');
         if (gameState.player.exp >= gameState.player.expNext) {
             levelUp();
-            b.log.push('🎉 升级了！现在等级 ' + gameState.player.level);
+            b.log.push('升级了！现在等级 ' + gameState.player.level);
         }
         if (b.monster.bossRef) {
             b.monster.bossRef.defeated = true;
@@ -613,8 +653,9 @@ function render() {
 }
 
 function updateCamera() {
-    const px = gameState.player.x * TILE_SIZE + TILE_SIZE / 2;
-    const py = gameState.player.y * TILE_SIZE + TILE_SIZE / 2;
+    const ts = getTileSize();
+    const px = gameState.player.x * ts + ts / 2;
+    const py = gameState.player.y * ts + ts / 2;
     if (!camReady) { camX = px; camY = py; camReady = true; return; }
     const edgeX = canvas.width * 0.32;
     const edgeY = canvas.height * 0.32;
@@ -625,42 +666,38 @@ function updateCamera() {
     if (sy < edgeY) camY -= (edgeY - sy);
     if (sy > canvas.height - edgeY) camY += (sy - (canvas.height - edgeY));
     const map = getMap();
-    const mw = map.width * TILE_SIZE, mh = map.height * TILE_SIZE;
+    const mw = map.width * ts, mh = map.height * ts;
     camX = Math.max(canvas.width / 2, Math.min(mw - canvas.width / 2, camX));
     camY = Math.max(canvas.height / 2, Math.min(mh - canvas.height / 2, camY));
 }
 
 function renderMap() {
     const map = getMap();
+    const ts = getTileSize();
     updateCamera();
     const offsetX = Math.floor(canvas.width / 2 - camX);
     const offsetY = Math.floor(canvas.height / 2 - camY);
-    const isPixel = currentTheme !== 'classic';
+    const vc = isVirtualCanvas();
 
     for (let y = 0; y < map.height; y++) {
         for (let x = 0; x < map.width; x++) {
             const tile = map.tiles[y * map.width + x];
-            const sx = offsetX + x * TILE_SIZE;
-            const sy = offsetY + y * TILE_SIZE;
-            if (sx > canvas.width || sy > canvas.height || sx + TILE_SIZE < 0 || sy + TILE_SIZE < 0) continue;
+            const sx = offsetX + x * ts;
+            const sy = offsetY + y * ts;
+            if (sx > canvas.width || sy > canvas.height || sx + ts < 0 || sy + ts < 0) continue;
 
-            if (isPixel) {
-                let handled = false;
-                if (currentTheme === 'retro') handled = getRetroTilePattern(ctx, tile, sx, sy, TILE_SIZE);
-                else handled = getPixelTilePattern(ctx, tile, sx, sy, TILE_SIZE);
-                if (!handled) {
-                    ctx.fillStyle = getTileColor(tile) || TILE_RENDER[tile].bg;
-                    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
-                }
+            if (vc) {
+                if (currentTheme === 'retro') renderRetroTile(ctx, tile, sx, sy);
+                else renderPixelTile(ctx, tile, sx, sy);
             } else {
                 const tr = TILE_RENDER[tile];
                 ctx.fillStyle = tr.bg;
-                ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                ctx.fillRect(sx, sy, ts, ts);
                 if (tr.char) {
-                    ctx.font = (TILE_SIZE * 0.6) + 'px sans-serif';
+                    ctx.font = (ts * 0.6) + 'px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(tr.char, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+                    ctx.fillText(tr.char, sx + ts / 2, sy + ts / 2);
                 }
             }
         }
@@ -668,17 +705,17 @@ function renderMap() {
 
     if (map.exits) {
         for (const ex of map.exits) {
-            const sx = offsetX + ex.x * TILE_SIZE;
-            const sy = offsetY + ex.y * TILE_SIZE;
-            if (isPixel) {
-                const pal = PALETTES[currentTheme];
-                drawPixelSprite(ctx, 'door', sx, sy, TILE_SIZE, currentTheme === 'retro' ? pal.dark : '#d4883a');
+            const sx = offsetX + ex.x * ts;
+            const sy = offsetY + ex.y * ts;
+            if (vc) {
+                const color = currentTheme === 'retro' ? PALETTES.retro.dark : '#d4883a';
+                drawTilePattern16(ctx, TILE_PATTERNS.door, sx, sy, color);
             } else {
-                ctx.font = (TILE_SIZE * 0.5) + 'px sans-serif';
+                ctx.font = (ts * 0.5) + 'px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = '#ff9800';
-                ctx.fillText('🚪', sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+                ctx.fillText('🚪', sx + ts / 2, sy + ts / 2);
             }
         }
     }
@@ -686,16 +723,17 @@ function renderMap() {
     if (map.npcs) {
         for (const n of map.npcs) {
             const npc = NPCS[n.id];
-            const sx = offsetX + n.x * TILE_SIZE;
-            const sy = offsetY + n.y * TILE_SIZE;
-            if (isPixel) {
+            const sx = offsetX + n.x * ts;
+            const sy = offsetY + n.y * ts;
+            if (vc) {
                 const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS[n.id] || '#e0e0e0');
-                drawPixelSprite(ctx, 'npc', sx, sy, TILE_SIZE, color);
+                const spriteData = getCharSpriteData('npc');
+                drawSprite24(ctx, spriteData, sx - 4, sy - 8, color);
             } else {
-                ctx.font = (TILE_SIZE * 0.7) + 'px sans-serif';
+                ctx.font = (ts * 0.7) + 'px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(npc.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+                ctx.fillText(npc.emoji, sx + ts / 2, sy + ts / 2);
             }
         }
     }
@@ -705,17 +743,18 @@ function renderMap() {
         for (const b of ms.bosses) {
             if (b.defeated) continue;
             const mon = MONSTERS[b.monsterId];
-            const sx = offsetX + b.x * TILE_SIZE;
-            const sy = offsetY + b.y * TILE_SIZE;
-            if (isPixel) {
+            const sx = offsetX + b.x * ts;
+            const sy = offsetY + b.y * ts;
+            if (vc) {
                 const spriteKey = MONSTER_SPRITE_MAP[b.monsterId] || 'boss';
                 const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS[b.monsterId] || '#e04040');
-                drawPixelSprite(ctx, spriteKey, sx, sy, TILE_SIZE, color);
+                const spriteData = getCharSpriteData(spriteKey);
+                drawSprite24(ctx, spriteData, sx - 4, sy - 8, color);
             } else {
-                ctx.font = (TILE_SIZE * 0.8) + 'px sans-serif';
+                ctx.font = (ts * 0.8) + 'px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(mon.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+                ctx.fillText(mon.emoji, sx + ts / 2, sy + ts / 2);
             }
         }
     }
@@ -723,40 +762,47 @@ function renderMap() {
     for (const id in gameState.otherPlayers) {
         const op = gameState.otherPlayers[id];
         if (op.map !== gameState.currentMap) continue;
-        const sx = offsetX + op.x * TILE_SIZE;
-        const sy = offsetY + op.y * TILE_SIZE;
-        if (isPixel) {
-            drawPixelSprite(ctx, 'player', sx, sy, TILE_SIZE, currentTheme === 'retro' ? PALETTES.retro.dark : '#e8d44d');
+        const sx = offsetX + op.x * ts;
+        const sy = offsetY + op.y * ts;
+        if (vc) {
+            const color = currentTheme === 'retro' ? PALETTES.retro.dark : '#e8d44d';
+            drawSprite24(ctx, SPRITES_24.player_down_0, sx - 4, sy - 8, color);
         } else {
-            ctx.font = (TILE_SIZE * 0.7) + 'px sans-serif';
+            ctx.font = (ts * 0.7) + 'px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(op.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+            ctx.fillText(op.emoji, sx + ts / 2, sy + ts / 2);
             ctx.font = '11px sans-serif';
             ctx.fillStyle = '#fff';
-            ctx.fillText(op.name, sx + TILE_SIZE / 2, sy - 4);
+            ctx.fillText(op.name, sx + ts / 2, sy - 4);
         }
     }
 
-    const px = offsetX + gameState.player.x * TILE_SIZE;
-    const py = offsetY + gameState.player.y * TILE_SIZE;
-    if (isPixel) {
+    const p = gameState.player;
+    const px = offsetX + p.x * ts;
+    const py = offsetY + p.y * ts;
+    if (vc) {
         const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS.player || '#e8d44d');
-        drawPixelSprite(ctx, 'player', px, py, TILE_SIZE, color);
+        const spriteKey = getPlayerSpriteKey(p.facing, p.walkFrame);
+        const spriteData = getCharSpriteData(spriteKey);
+        drawSprite24(ctx, spriteData, px - 4, py - 8, color);
     } else {
-        ctx.font = (TILE_SIZE * 0.8) + 'px sans-serif';
+        ctx.font = (ts * 0.8) + 'px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(gameState.player.emoji, px + TILE_SIZE / 2, py + TILE_SIZE / 2);
+        ctx.fillText(p.emoji, px + ts / 2, py + ts / 2);
     }
 }
 
 function renderHUD() {
     const p = gameState.player;
-    const pad = 8;
-    const w = 210, h = 100;
     const pal = PALETTES[currentTheme];
     const isRetro = currentTheme === 'retro';
+    const vc = isVirtualCanvas();
+
+    const pad = vc ? 3 : 8;
+    const w = vc ? 110 : 210;
+    const h = vc ? 52 : 100;
 
     ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.75)';
     ctx.fillRect(pad, pad, w, h);
@@ -767,83 +813,90 @@ function renderHUD() {
     }
 
     ctx.fillStyle = pal ? pal.text : '#fff';
-    ctx.font = 'bold 15px sans-serif';
+    ctx.font = vc ? 'bold 8px sans-serif' : 'bold 15px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     const namePrefix = isRetro ? '' : (p.emoji + ' ');
-    ctx.fillText(namePrefix + p.name + '  Lv.' + p.level, pad + 8, pad + 8);
+    ctx.fillText(namePrefix + p.name + ' Lv.' + p.level, pad + 4, pad + 3);
+
+    const barX = pad + 4;
+    const barW = vc ? 48 : 90;
+    const barH = vc ? 6 : 12;
+    const labelX = barX + barW + 3;
 
     ctx.fillStyle = isRetro ? pal.mid : '#e74c3c';
-    ctx.fillRect(pad + 8, pad + 30, 90, 12);
+    ctx.fillRect(barX, pad + (vc ? 14 : 30), barW, barH);
     ctx.fillStyle = pal ? pal.hpBar : '#2ecc71';
-    ctx.fillRect(pad + 8, pad + 30, 90 * (p.stats.hp / p.maxHp), 12);
+    ctx.fillRect(barX, pad + (vc ? 14 : 30), barW * (p.stats.hp / p.maxHp), barH);
     ctx.fillStyle = pal ? pal.text : '#fff';
-    ctx.font = '12px sans-serif';
-    ctx.fillText('HP ' + p.stats.hp + '/' + p.maxHp, pad + 102, pad + 30);
+    ctx.font = vc ? '6px sans-serif' : '12px sans-serif';
+    ctx.fillText('HP ' + p.stats.hp + '/' + p.maxHp, labelX, pad + (vc ? 14 : 30));
 
     ctx.fillStyle = isRetro ? pal.mid : '#555';
-    ctx.fillRect(pad + 8, pad + 48, 90, 12);
+    ctx.fillRect(barX, pad + (vc ? 22 : 48), barW, barH);
     ctx.fillStyle = pal ? pal.mpBar : '#3498db';
-    ctx.fillRect(pad + 8, pad + 48, 90 * (p.stats.mp / p.maxMp), 12);
+    ctx.fillRect(barX, pad + (vc ? 22 : 48), barW * (p.stats.mp / p.maxMp), barH);
     ctx.fillStyle = pal ? pal.text : '#fff';
-    ctx.fillText('MP ' + p.stats.mp + '/' + p.maxMp, pad + 102, pad + 48);
+    ctx.fillText('MP ' + p.stats.mp + '/' + p.maxMp, labelX, pad + (vc ? 22 : 48));
 
     ctx.fillStyle = pal ? pal.accent : '#f1c40f';
-    ctx.font = '13px sans-serif';
-    ctx.fillText((isRetro ? '' : '💰 ') + p.gold + '金', pad + 8, pad + 68);
+    ctx.font = vc ? '6px sans-serif' : '13px sans-serif';
+    ctx.fillText((isRetro ? '' : '💰 ') + p.gold + '金', pad + 4, pad + (vc ? 32 : 68));
     ctx.fillStyle = pal ? pal.text : '#ccc';
-    ctx.fillText('EXP ' + p.exp + '/' + p.expNext, pad + 80, pad + 68);
+    ctx.fillText('EXP ' + p.exp + '/' + p.expNext, pad + (vc ? 42 : 80), pad + (vc ? 32 : 68));
 
     ctx.fillStyle = pal ? pal.mid : '#666';
-    ctx.font = '10px sans-serif';
-    ctx.fillText(GAME_VERSION + ' · ' + getMap().name, pad + 8, pad + 86);
+    ctx.font = vc ? '5px sans-serif' : '10px sans-serif';
+    ctx.fillText(GAME_VERSION + ' · ' + getMap().name, pad + 4, pad + (vc ? 42 : 86));
 }
 
 function renderDialog() {
     const d = gameState.dialog;
-    const pad = 12;
-    const h = 120;
+    const vc = isVirtualCanvas();
+    const pad = vc ? 4 : 12;
+    const h = vc ? 56 : 120;
     const y = canvas.height - h - pad;
     const pal = PALETTES[currentTheme];
 
     ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.9)';
     ctx.fillRect(pad, y, canvas.width - pad * 2, h);
     ctx.strokeStyle = pal ? pal.uiBorder : '#fff';
-    ctx.lineWidth = pal ? 2 : 1;
+    ctx.lineWidth = 1;
     ctx.strokeRect(pad, y, canvas.width - pad * 2, h);
 
     ctx.fillStyle = pal ? pal.accent : '#f1c40f';
-    ctx.font = 'bold 16px sans-serif';
+    ctx.font = vc ? 'bold 8px sans-serif' : 'bold 16px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(d.speaker, pad + 12, y + 10);
+    ctx.fillText(d.speaker, pad + 6, y + (vc ? 4 : 10));
 
     ctx.fillStyle = pal ? pal.text : '#fff';
-    ctx.font = '16px sans-serif';
-    wrapText(d.text, pad + 12, y + 36, canvas.width - pad * 2 - 24, 22);
+    ctx.font = vc ? '7px sans-serif' : '16px sans-serif';
+    wrapText(d.text, pad + 6, y + (vc ? 16 : 36), canvas.width - pad * 2 - 12, vc ? 10 : 22);
 
     ctx.fillStyle = pal ? pal.mid : '#999';
-    ctx.font = '13px sans-serif';
+    ctx.font = vc ? '6px sans-serif' : '13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('点击继续', canvas.width - pad - 12, y + h - 20);
+    ctx.fillText('点击继续', canvas.width - pad - 6, y + h - (vc ? 10 : 20));
 }
 
 function renderMessage() {
+    const vc = isVirtualCanvas();
     const pal = PALETTES[currentTheme];
-    ctx.font = '15px sans-serif';
+    ctx.font = vc ? '7px sans-serif' : '15px sans-serif';
     const tw = ctx.measureText(gameState.message).width;
-    const w = Math.min(tw + 40, canvas.width - 40);
+    const w = Math.min(tw + (vc ? 16 : 40), canvas.width - (vc ? 16 : 40));
     ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.85)';
-    ctx.fillRect((canvas.width - w) / 2, canvas.height - 60, w, 36);
+    ctx.fillRect((canvas.width - w) / 2, canvas.height - (vc ? 28 : 60), w, vc ? 16 : 36);
     if (pal) {
         ctx.strokeStyle = pal.uiBorder;
         ctx.lineWidth = 1;
-        ctx.strokeRect((canvas.width - w) / 2, canvas.height - 60, w, 36);
+        ctx.strokeRect((canvas.width - w) / 2, canvas.height - (vc ? 28 : 60), w, vc ? 16 : 36);
     }
     ctx.fillStyle = pal ? pal.text : '#fff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(gameState.message, canvas.width / 2, canvas.height - 42);
+    ctx.fillText(gameState.message, canvas.width / 2, canvas.height - (vc ? 20 : 42));
 }
 
 function wrapText(text, x, y, maxWidth, lineHeight) {
@@ -865,74 +918,100 @@ function wrapText(text, x, y, maxWidth, lineHeight) {
 
 function renderBattle() {
     const b = gameState.battle;
-    ctx.fillStyle = '#1a1a2e';
+    const vc = isVirtualCanvas();
+    const pal = PALETTES[currentTheme];
+
+    ctx.fillStyle = pal ? pal.bg : '#1a1a2e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#16213e';
+    ctx.fillStyle = pal ? pal.mid : '#16213e';
     ctx.fillRect(0, 0, canvas.width, canvas.height * 0.45);
 
-    ctx.font = (Math.min(canvas.width, 300) * 0.25) + 'px sans-serif';
+    if (vc) {
+        const spriteKey = MONSTER_SPRITE_MAP[b.monster.id] || 'boss';
+        const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS[b.monster.id] || '#e04040');
+        const spriteData = getCharSpriteData(spriteKey);
+        const spriteSize = 3;
+        const cx = Math.floor(canvas.width / 2 - 12 * spriteSize);
+        const cy = Math.floor(canvas.height * 0.08);
+        ctx.save();
+        ctx.fillStyle = color;
+        for (let row = 0; row < 24; row++) {
+            const bits = spriteData[row];
+            if (!bits) continue;
+            for (let col = 0; col < 24; col++) {
+                if (bits & (1 << (23 - col))) {
+                    ctx.fillRect(cx + col * spriteSize, cy + row * spriteSize, spriteSize, spriteSize);
+                }
+            }
+        }
+        ctx.restore();
+    } else {
+        ctx.font = (Math.min(canvas.width, 300) * 0.25) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.monster.emoji, canvas.width / 2, canvas.height * 0.2);
+    }
+
+    ctx.fillStyle = pal ? pal.text : '#fff';
+    ctx.font = vc ? 'bold 8px sans-serif' : 'bold 16px sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(b.monster.emoji, canvas.width / 2, canvas.height * 0.2);
+    ctx.fillText(b.monster.name + (b.monster.isBoss ? ' BOSS' : ''), canvas.width / 2, canvas.height * 0.35);
 
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(b.monster.name + (b.monster.isBoss ? ' 👹' : ''), canvas.width / 2, canvas.height * 0.35);
-
-    const barW = 160, barH = 12;
+    const barW = vc ? 80 : 160;
+    const barH = vc ? 6 : 12;
     const barX = (canvas.width - barW) / 2;
     const barY = canvas.height * 0.38;
     ctx.fillStyle = '#444';
     ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = '#e74c3c';
+    ctx.fillStyle = pal ? pal.hpBar : '#e74c3c';
     ctx.fillRect(barX, barY, barW * Math.max(0, b.monster.currentHp / b.monster.hp), barH);
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px sans-serif';
-    ctx.fillText('HP ' + b.monster.currentHp + '/' + b.monster.hp, canvas.width / 2, barY + barH + 12);
+    ctx.fillStyle = pal ? pal.text : '#fff';
+    ctx.font = vc ? '6px sans-serif' : '12px sans-serif';
+    ctx.fillText('HP ' + b.monster.currentHp + '/' + b.monster.hp, canvas.width / 2, barY + barH + (vc ? 6 : 12));
 
     const logY = canvas.height * 0.46;
-    const logH = 80;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(10, logY, canvas.width - 20, logH);
-    ctx.fillStyle = '#ddd';
-    ctx.font = '14px sans-serif';
+    const logH = vc ? 36 : 80;
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.6)';
+    ctx.fillRect(vc ? 4 : 10, logY, canvas.width - (vc ? 8 : 20), logH);
+    ctx.fillStyle = pal ? pal.text : '#ddd';
+    ctx.font = vc ? '6px sans-serif' : '14px sans-serif';
     ctx.textAlign = 'left';
     const visibleLogs = b.log.slice(-3);
     visibleLogs.forEach((l, i) => {
-        ctx.fillText(l, 20, logY + 20 + i * 24);
+        ctx.fillText(l, vc ? 8 : 20, logY + (vc ? 8 : 20) + i * (vc ? 10 : 24));
     });
 
-    const panelY = canvas.height * 0.46 + logH + 10;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(10, panelY, canvas.width - 20, 34);
+    const panelY = canvas.height * 0.46 + logH + (vc ? 4 : 10);
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.5)';
+    ctx.fillRect(vc ? 4 : 10, panelY, canvas.width - (vc ? 8 : 20), vc ? 16 : 34);
 
-    ctx.fillStyle = '#2ecc71';
-    ctx.fillRect(20, panelY + 4, 90 * (b.playerHp / gameState.player.maxHp), 12);
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px sans-serif';
+    ctx.fillStyle = pal ? pal.hpBar : '#2ecc71';
+    ctx.fillRect(vc ? 8 : 20, panelY + (vc ? 2 : 4), (vc ? 40 : 90) * (b.playerHp / gameState.player.maxHp), vc ? 5 : 12);
+    ctx.fillStyle = pal ? pal.text : '#fff';
+    ctx.font = vc ? '5px sans-serif' : '12px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('HP ' + b.playerHp + '/' + gameState.player.maxHp, 115, panelY + 5);
+    ctx.fillText('HP ' + b.playerHp + '/' + gameState.player.maxHp, vc ? 52 : 115, panelY + (vc ? 2 : 5));
 
-    ctx.fillStyle = '#3498db';
-    ctx.fillRect(20, panelY + 19, 90 * (b.playerMp / gameState.player.maxMp), 12);
-    ctx.fillStyle = '#fff';
-    ctx.fillText('MP ' + b.playerMp + '/' + gameState.player.maxMp, 115, panelY + 20);
+    ctx.fillStyle = pal ? pal.mpBar : '#3498db';
+    ctx.fillRect(vc ? 8 : 20, panelY + (vc ? 9 : 19), (vc ? 40 : 90) * (b.playerMp / gameState.player.maxMp), vc ? 5 : 12);
+    ctx.fillStyle = pal ? pal.text : '#fff';
+    ctx.fillText('MP ' + b.playerMp + '/' + gameState.player.maxMp, vc ? 52 : 115, panelY + (vc ? 9 : 20));
 
     if (b.result) return;
     if (b.turn !== 'player') return;
 
-    const btnY = panelY + 45;
-    const btnW = (canvas.width - 50) / 2;
-    const btnH = 44;
+    const btnY = panelY + (vc ? 20 : 45);
+    const btnW = (canvas.width - (vc ? 20 : 50)) / 2;
+    const btnH = vc ? 20 : 44;
 
     battleButtons = [];
 
     if (b.phase === 'menu') {
-        drawBtn(15, btnY, btnW, btnH, '⚔️ 攻击', '#e67e22', () => battleAction('attack'));
-        drawBtn(25 + btnW, btnY, btnW, btnH, '✨ 技能', '#9b59b6', () => { b.phase = 'skills'; });
-        drawBtn(15, btnY + btnH + 8, btnW, btnH, '🏃 逃跑', '#95a5a6', () => battleAction('flee'));
-        drawBtn(25 + btnW, btnY + btnH + 8, btnW, btnH, '💊 回复', '#27ae60', () => {
+        drawBtn(vc ? 4 : 15, btnY, btnW, btnH, '⚔ 攻击', pal ? pal.mid : '#e67e22', () => battleAction('attack'));
+        drawBtn((vc ? 12 : 25) + btnW, btnY, btnW, btnH, '✦ 技能', pal ? pal.accent : '#9b59b6', () => { b.phase = 'skills'; });
+        drawBtn(vc ? 4 : 15, btnY + btnH + (vc ? 3 : 8), btnW, btnH, '↩ 逃跑', pal ? pal.mid : '#95a5a6', () => battleAction('flee'));
+        drawBtn((vc ? 12 : 25) + btnW, btnY + btnH + (vc ? 3 : 8), btnW, btnH, '♥ 回复', pal ? pal.accent : '#27ae60', () => {
             if (b.playerHp < gameState.player.maxHp) {
                 const heal = Math.floor(gameState.player.maxHp * 0.3);
                 b.playerHp = Math.min(gameState.player.maxHp, b.playerHp + heal);
@@ -946,21 +1025,22 @@ function renderBattle() {
         });
     } else if (b.phase === 'skills') {
         gameState.player.skills.forEach((sk, i) => {
-            const y2 = btnY + i * (btnH + 8);
+            const y2 = btnY + i * (btnH + (vc ? 3 : 8));
             const canUse = b.playerMp >= sk.cost;
-            drawBtn(15, y2, canvas.width - 30, btnH, sk.name + '（' + sk.cost + 'MP）', canUse ? '#8e44ad' : '#555', canUse ? () => { battleAction('skill', i); b.phase = 'menu'; } : null);
+            drawBtn(vc ? 4 : 15, y2, canvas.width - (vc ? 8 : 30), btnH, sk.name + '(' + sk.cost + 'MP)', canUse ? (pal ? pal.accent : '#8e44ad') : '#555', canUse ? () => { battleAction('skill', i); b.phase = 'menu'; } : null);
         });
-        drawBtn(15, btnY + gameState.player.skills.length * (btnH + 8), canvas.width - 30, btnH, '← 返回', '#7f8c8d', () => { b.phase = 'menu'; });
+        drawBtn(vc ? 4 : 15, btnY + gameState.player.skills.length * (btnH + (vc ? 3 : 8)), canvas.width - (vc ? 8 : 30), btnH, '← 返回', pal ? pal.mid : '#7f8c8d', () => { b.phase = 'menu'; });
     }
 }
 
 let battleButtons = [];
 
 function drawBtn(x, y, w, h, text, color, onClick) {
+    const vc = isVirtualCanvas();
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 16px sans-serif';
+    ctx.font = vc ? 'bold 7px sans-serif' : 'bold 16px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, x + w / 2, y + h / 2);
