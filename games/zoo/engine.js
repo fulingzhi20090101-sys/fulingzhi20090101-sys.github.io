@@ -178,17 +178,28 @@ const ZooEngine = (() => {
 
         _waterPhase += 0.02;
 
-        // Background
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, viewW, viewH);
+        // Determine edge fill tile (trees for outdoor, walls for indoor)
+        const edgeTile = map.edgeTile !== undefined ? map.edgeTile : 6;
 
-        // Layer 1: Base ground
-        for (let y = 0; y < map.height; y++) {
-            for (let x = 0; x < map.width; x++) {
-                const tile = map.tiles[y * map.width + x];
+        // Compute visible tile range (may extend outside map bounds)
+        const startTX = Math.floor(-offX / ts);
+        const startTY = Math.floor(-offY / ts);
+        const endTX = Math.ceil((viewW - offX) / ts);
+        const endTY = Math.ceil((viewH - offY) / ts);
+
+        // Layer 1: Base ground + edge fill
+        for (let y = startTY; y < endTY; y++) {
+            for (let x = startTX; x < endTX; x++) {
                 const sx = offX + x * ts, sy = offY + y * ts;
                 if (sx > viewW || sy > viewH || sx + ts < 0 || sy + ts < 0) continue;
 
+                if (x < 0 || x >= map.width || y < 0 || y >= map.height) {
+                    _drawFrame(ctx, 'world_tileset', 0, sx, sy, ts, ts);
+                    _drawFrame(ctx, 'world_tileset', edgeTile, sx, sy, ts, ts);
+                    continue;
+                }
+
+                const tile = map.tiles[y * map.width + x];
                 const m = TILE_LAYERS[tile];
                 if (!m) continue;
 

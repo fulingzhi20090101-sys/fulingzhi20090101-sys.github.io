@@ -671,8 +671,10 @@ function updateCamera() {
     if (sy > viewH - edgeY) camY += (sy - (viewH - edgeY));
     const map = getMap();
     const mw = map.width * ts, mh = map.height * ts;
-    camX = Math.max(viewW / 2, Math.min(mw - viewW / 2, camX));
-    camY = Math.max(viewH / 2, Math.min(mh - viewH / 2, camY));
+    if (mw <= viewW) { camX = mw / 2; }
+    else { camX = Math.max(viewW / 2, Math.min(mw - viewW / 2, camX)); }
+    if (mh <= viewH) { camY = mh / 2; }
+    else { camY = Math.max(viewH / 2, Math.min(mh - viewH / 2, camY)); }
 }
 
 function renderMap() {
