@@ -19,6 +19,8 @@ const ZooEngine = (() => {
         });
     }
 
+    const ASSET_VER = 2;
+
     async function loadAssets(basePath, onProgress) {
         const manifest = [
             ['world_tileset',  'assets/tilesets/world_tileset.png'],
@@ -34,7 +36,7 @@ const ZooEngine = (() => {
         let done = 0;
         for (const [key, src] of manifest) {
             try {
-                _assets[key] = await _loadImage(basePath + src);
+                _assets[key] = await _loadImage(basePath + src + '?v=' + ASSET_VER);
             } catch (e) {
                 console.warn('Failed to load:', key);
             }
