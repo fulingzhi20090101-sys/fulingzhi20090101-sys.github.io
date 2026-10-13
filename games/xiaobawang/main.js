@@ -22,6 +22,7 @@ const GAMES = [
 
 const LS_AVATARS = 'xbw_user_avatars';
 const LS_SCORES  = 'xbw_scores';
+const LS_DAILY   = 'xbw_daily_play';
 
 // ── App state ──
 let state           = '';
@@ -158,19 +159,77 @@ function updateTitleBar() {
     }
 }
 
-// ── Session timer ──
+// ── Persistent daily play timer ──
+function _todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function _loadDaily() {
+    try { return JSON.parse(localStorage.getItem(LS_DAILY) || '{}'); } catch { return {}; }
+}
+
+function _saveDaily(data) {
+    try { localStorage.setItem(LS_DAILY, JSON.stringify(data)); } catch {}
+}
+
+function getDailyUsed(user) {
+    const data = _loadDaily();
+    const rec = data[user];
+    if (!rec || rec.date !== _todayStr()) return 0;
+    return rec.used || 0;
+}
+
+function addDailyUsed(user, seconds) {
+    const data = _loadDaily();
+    const today = _todayStr();
+    if (!data[user] || data[user].date !== today) {
+        data[user] = { date: today, used: 0, limit: 0 };
+    }
+    data[user].used += seconds;
+    _saveDaily(data);
+}
+
+function setDailyLimit(user, limit) {
+    const data = _loadDaily();
+    const today = _todayStr();
+    if (!data[user] || data[user].date !== today) {
+        data[user] = { date: today, used: 0, limit: limit };
+    } else {
+        data[user].limit = Math.max(data[user].limit, limit);
+    }
+    _saveDaily(data);
+}
+
+function getDailyRemaining(user) {
+    const data = _loadDaily();
+    const today = _todayStr();
+    const rec = data[user];
+    if (!rec || rec.date !== today) return 0;
+    return Math.max(0, rec.limit - rec.used);
+}
+
+let _lastTickTime = 0;
+
 function startSession(duration) {
+    const user = currentUser || '?';
+    setDailyLimit(user, duration);
+    const remaining = getDailyRemaining(user);
     sessionDuration = duration;
-    sessionTimeLeft = duration;
+    sessionTimeLeft = remaining;
     sessionRunning  = false;
+    _lastTickTime = 0;
 }
 
 function activateTimer() {
     if (timerIntervalId) clearInterval(timerIntervalId);
     sessionRunning = true;
+    _lastTickTime = Date.now();
     timerIntervalId = setInterval(() => {
         if (!sessionRunning || sessionTimeLeft <= 0) return;
         sessionTimeLeft--;
+        const user = currentUser || '?';
+        addDailyUsed(user, 1);
         updateTitleBar();
         if (sessionTimeLeft <= 0) {
             sessionRunning = false;
@@ -606,6 +665,43 @@ function buildMainMenu() {
 function buildTimeSelect() {
     const sc = screens['time-select'];
     sc.innerHTML = '<h2 class="screen-title">选择游戏时长</h2>';
+
+    const user = currentUser || '?';
+    const used = getDailyUsed(user);
+    const data = _loadDaily();
+    const rec = data[user];
+    const hasLimit = rec && rec.date === _todayStr() && rec.limit > 0;
+    const remaining = hasLimit ? Math.max(0, rec.limit - used) : null;
+
+    if (hasLimit && remaining <= 0) {
+        const warn = document.createElement('p');
+        warn.style.cssText = 'color:#f85149;font-size:1rem;text-align:center;padding:20px 0';
+        warn.textContent = '⏱ 今日游戏时间已用完，明天再来吧！';
+        sc.appendChild(warn);
+        if (used > 0) {
+            const info = document.createElement('p');
+            info.style.cssText = 'color:var(--text-dim);font-size:0.8rem;text-align:center';
+            const m = Math.floor(used / 60);
+            info.textContent = '今天已玩 ' + m + ' 分钟';
+            sc.appendChild(info);
+        }
+        const back = document.createElement('div');
+        back.className = 'back-link';
+        back.textContent = '← 返回';
+        back.addEventListener('click', () => setState('main-menu'));
+        sc.appendChild(back);
+        showScreen('time-select');
+        return;
+    }
+
+    if (hasLimit && remaining !== null && remaining < (rec.limit)) {
+        const info = document.createElement('p');
+        info.style.cssText = 'color:var(--accent);font-size:0.85rem;text-align:center;margin-bottom:10px';
+        const rm = Math.floor(remaining / 60), rs = remaining % 60;
+        info.textContent = '今日剩余: ' + rm + ':' + String(rs).padStart(2,'0');
+        sc.appendChild(info);
+    }
+
     const grid = document.createElement('div');
     grid.className = 'time-grid';
     [[60,'1 分钟'],[180,'3 分钟'],[300,'5 分钟']].forEach(([secs, label]) => {
@@ -676,7 +772,7 @@ function buildCrGameover() {
     const sc = screens['cr-gameover'];
     sc.innerHTML = '';
     const score = currentScore;
-    const canPlay = sessionTimeLeft > 0;
+    const canPlay = sessionTimeLeft > 0 && getDailyRemaining(currentUser || '?') > 0;
 
     const wrap = document.createElement('div');
     wrap.className = 'gameover-wrap';
@@ -713,7 +809,7 @@ function buildCrGameover() {
     } else {
         const warn = document.createElement('p');
         warn.style.cssText = 'color:var(--danger);font-size:0.78rem;text-align:center';
-        warn.textContent = '⏱ 游戏时间已结束，返回菜单可重新计时';
+        warn.textContent = '⏱ 今日游戏时间已结束';
         left.appendChild(warn);
     }
 
@@ -757,7 +853,7 @@ function buildFjGameover() {
     const sc = screens['fj-gameover'];
     sc.innerHTML = '';
     const score = currentScore;
-    const canPlay = sessionTimeLeft > 0;
+    const canPlay = sessionTimeLeft > 0 && getDailyRemaining(currentUser || '?') > 0;
 
     const wrap = document.createElement('div');
     wrap.className = 'gameover-wrap';
@@ -794,7 +890,7 @@ function buildFjGameover() {
     } else {
         const warn = document.createElement('p');
         warn.style.cssText = 'color:var(--danger);font-size:0.78rem;text-align:center';
-        warn.textContent = '⏱ 游戏时间已结束，返回菜单可重新计时';
+        warn.textContent = '⏱ 今日游戏时间已结束';
         left.appendChild(warn);
     }
 
@@ -856,7 +952,7 @@ function buildSkGameover() {
     const sc = screens['sk-gameover'];
     sc.innerHTML = '';
     const score = currentScore;
-    const canPlay = sessionTimeLeft > 0;
+    const canPlay = sessionTimeLeft > 0 && getDailyRemaining(currentUser || '?') > 0;
 
     const wrap = document.createElement('div');
     wrap.className = 'gameover-wrap';
@@ -893,7 +989,7 @@ function buildSkGameover() {
     } else {
         const warn = document.createElement('p');
         warn.style.cssText = 'color:var(--danger);font-size:0.78rem;text-align:center';
-        warn.textContent = '⏱ 游戏时间已结束，返回菜单可重新计时';
+        warn.textContent = '⏱ 今日游戏时间已结束';
         left.appendChild(warn);
     }
 
