@@ -4,7 +4,7 @@ let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 let gameArea = { x: 0, y: 0, w: 0, h: 0 };
 
-const GAME_VERSION = 'v2.1';
+const GAME_VERSION = 'v3.0';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -237,6 +237,7 @@ function movePlayer(dx, dy) {
     gameState.player.x = nx;
     gameState.player.y = ny;
     gameState.player.walkFrame = 1 - gameState.player.walkFrame;
+    gameState.player._lastMoveTime = Date.now();
 }
 
 function checkRandomEncounter() {
@@ -428,6 +429,7 @@ function startBattle(monsterId, bossRef) {
     const template = MONSTERS[monsterId];
     const monster = {
         ...template,
+        monsterId: monsterId,
         currentHp: template.hp,
         bossRef: bossRef,
     };
@@ -679,21 +681,25 @@ function renderMap() {
     const vc = isVirtualCanvas();
     updateCamera();
 
-    let rc, viewW, viewH;
-    if (vc) {
-        rc = worldCtx;
-        viewW = VIRTUAL_WIDTH;
-        viewH = VIRTUAL_HEIGHT;
-        const pal = PALETTES[currentTheme];
-        rc.fillStyle = pal.bg;
-        rc.fillRect(0, 0, viewW, viewH);
-    } else {
-        rc = ctx;
-        viewW = canvas.width;
-        viewH = canvas.height;
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, viewW, viewH);
+    if (vc && ZooEngine.isLoaded()) {
+        worldCtx.imageSmoothingEnabled = false;
+        const ms = gameState.mapState[gameState.currentMap];
+        ZooEngine.renderWorld(
+            worldCtx, map, ms, gameState.player,
+            gameState.otherPlayers, camX, camY,
+            VIRTUAL_WIDTH, VIRTUAL_HEIGHT, currentTheme
+        );
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(worldCanvas, gameArea.x, gameArea.y, gameArea.w, gameArea.h);
+        ctx.imageSmoothingEnabled = true;
+        return;
     }
+
+    // Classic emoji mode fallback
+    const viewW = canvas.width;
+    const viewH = canvas.height;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, viewW, viewH);
 
     const offsetX = Math.floor(viewW / 2 - camX);
     const offsetY = Math.floor(viewH / 2 - camY);
@@ -704,20 +710,14 @@ function renderMap() {
             const sx = offsetX + x * ts;
             const sy = offsetY + y * ts;
             if (sx > viewW || sy > viewH || sx + ts < 0 || sy + ts < 0) continue;
-
-            if (vc) {
-                if (currentTheme === 'retro') renderRetroTile(rc, tile, sx, sy);
-                else renderPixelTile(rc, tile, sx, sy);
-            } else {
-                const tr = TILE_RENDER[tile];
-                rc.fillStyle = tr.bg;
-                rc.fillRect(sx, sy, ts, ts);
-                if (tr.char) {
-                    rc.font = (ts * 0.6) + 'px sans-serif';
-                    rc.textAlign = 'center';
-                    rc.textBaseline = 'middle';
-                    rc.fillText(tr.char, sx + ts / 2, sy + ts / 2);
-                }
+            const tr = TILE_RENDER[tile];
+            ctx.fillStyle = tr.bg;
+            ctx.fillRect(sx, sy, ts, ts);
+            if (tr.char) {
+                ctx.font = (ts * 0.6) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(tr.char, sx + ts / 2, sy + ts / 2);
             }
         }
     }
@@ -726,16 +726,11 @@ function renderMap() {
         for (const ex of map.exits) {
             const sx = offsetX + ex.x * ts;
             const sy = offsetY + ex.y * ts;
-            if (vc) {
-                const color = currentTheme === 'retro' ? PALETTES.retro.dark : '#d4883a';
-                drawTilePattern16(rc, TILE_PATTERNS.door, sx, sy, color);
-            } else {
-                rc.font = (ts * 0.5) + 'px sans-serif';
-                rc.textAlign = 'center';
-                rc.textBaseline = 'middle';
-                rc.fillStyle = '#ff9800';
-                rc.fillText('🚪', sx + ts / 2, sy + ts / 2);
-            }
+            ctx.font = (ts * 0.5) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ff9800';
+            ctx.fillText('🚪', sx + ts / 2, sy + ts / 2);
         }
     }
 
@@ -744,15 +739,10 @@ function renderMap() {
             const npc = NPCS[n.id];
             const sx = offsetX + n.x * ts;
             const sy = offsetY + n.y * ts;
-            if (vc) {
-                const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS[n.id] || '#e0e0e0');
-                drawSprite24(rc, getCharSpriteData('npc'), sx - 4, sy - 8, color);
-            } else {
-                rc.font = (ts * 0.7) + 'px sans-serif';
-                rc.textAlign = 'center';
-                rc.textBaseline = 'middle';
-                rc.fillText(npc.emoji, sx + ts / 2, sy + ts / 2);
-            }
+            ctx.font = (ts * 0.7) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(npc.emoji, sx + ts / 2, sy + ts / 2);
         }
     }
 
@@ -763,16 +753,10 @@ function renderMap() {
             const mon = MONSTERS[b.monsterId];
             const sx = offsetX + b.x * ts;
             const sy = offsetY + b.y * ts;
-            if (vc) {
-                const spriteKey = MONSTER_SPRITE_MAP[b.monsterId] || 'boss';
-                const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS[b.monsterId] || '#e04040');
-                drawSprite24(rc, getCharSpriteData(spriteKey), sx - 4, sy - 8, color);
-            } else {
-                rc.font = (ts * 0.8) + 'px sans-serif';
-                rc.textAlign = 'center';
-                rc.textBaseline = 'middle';
-                rc.fillText(mon.emoji, sx + ts / 2, sy + ts / 2);
-            }
+            ctx.font = (ts * 0.8) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(mon.emoji, sx + ts / 2, sy + ts / 2);
         }
     }
 
@@ -781,39 +765,22 @@ function renderMap() {
         if (op.map !== gameState.currentMap) continue;
         const sx = offsetX + op.x * ts;
         const sy = offsetY + op.y * ts;
-        if (vc) {
-            const color = currentTheme === 'retro' ? PALETTES.retro.dark : '#e8d44d';
-            drawSprite24(rc, SPRITES_24.player_down_0, sx - 4, sy - 8, color);
-        } else {
-            rc.font = (ts * 0.7) + 'px sans-serif';
-            rc.textAlign = 'center';
-            rc.textBaseline = 'middle';
-            rc.fillText(op.emoji, sx + ts / 2, sy + ts / 2);
-            rc.font = '11px sans-serif';
-            rc.fillStyle = '#fff';
-            rc.fillText(op.name, sx + ts / 2, sy - 4);
-        }
+        ctx.font = (ts * 0.7) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(op.emoji, sx + ts / 2, sy + ts / 2);
+        ctx.font = '11px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(op.name, sx + ts / 2, sy - 4);
     }
 
     const p = gameState.player;
     const px = offsetX + p.x * ts;
     const py = offsetY + p.y * ts;
-    if (vc) {
-        const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS.player || '#e8d44d');
-        const spriteKey = getPlayerSpriteKey(p.facing, p.walkFrame);
-        drawSprite24(rc, getCharSpriteData(spriteKey), px - 4, py - 8, color);
-    } else {
-        rc.font = (ts * 0.8) + 'px sans-serif';
-        rc.textAlign = 'center';
-        rc.textBaseline = 'middle';
-        rc.fillText(p.emoji, px + ts / 2, py + ts / 2);
-    }
-
-    if (vc) {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(worldCanvas, gameArea.x, gameArea.y, gameArea.w, gameArea.h);
-        ctx.imageSmoothingEnabled = true;
-    }
+    ctx.font = (ts * 0.8) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(p.emoji, px + ts / 2, py + ts / 2);
 }
 
 function renderHUD() {
@@ -938,10 +905,14 @@ function renderBattle() {
     ctx.fillStyle = pal ? pal.mid : '#16213e';
     ctx.fillRect(0, 0, canvas.width, canvas.height * 0.45);
 
-    ctx.font = (Math.min(canvas.width, 300) * 0.25) + 'px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(b.monster.emoji, canvas.width / 2, canvas.height * 0.2);
+    if (isVirtualCanvas() && ZooEngine.isLoaded()) {
+        ZooEngine.drawBattleSprite(ctx, b.monster.monsterId || '', canvas.width / 2, canvas.height * 0.2, 4);
+    } else {
+        ctx.font = (Math.min(canvas.width, 300) * 0.25) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.monster.emoji, canvas.width / 2, canvas.height * 0.2);
+    }
 
     ctx.fillStyle = pal ? pal.text : '#fff';
     ctx.font = 'bold 16px sans-serif';

@@ -103,10 +103,11 @@
         </div>
     </div>
 
-    <script src="themes.js?v=12"></script>
-    <script src="characters.js?v=12"></script>
-    <script src="maps.js?v=12"></script>
-    <script src="game.js?v=12"></script>
+    <script src="engine.js?v=13"></script>
+    <script src="themes.js?v=13"></script>
+    <script src="characters.js?v=13"></script>
+    <script src="maps.js?v=13"></script>
+    <script src="game.js?v=13"></script>
     <script>
         let selectedChar = null;
         let savedGame = null;
@@ -237,6 +238,9 @@
             document.getElementById('dpad').classList.add('active');
             document.getElementById('exitBtn').style.display = 'block';
             setupDpad();
+            if (!ZooEngine.isLoaded()) {
+                ZooEngine.loadAssets('').catch(() => {});
+            }
 
             const canvas = document.getElementById('gameCanvas');
             function canvasXY(clientX, clientY) {
