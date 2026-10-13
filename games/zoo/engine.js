@@ -5,7 +5,8 @@ const ZooEngine = (() => {
     const _sheets = {};
     let _loaded = false;
 
-    const SPRITE_FW = 16, SPRITE_FH = 16;
+    const SPRITE_FW = 16, SPRITE_FH = 24;
+    const TILE_FW = 16, TILE_FH = 16;
 
     // ── Asset loading ──
 
@@ -44,13 +45,17 @@ const ZooEngine = (() => {
         _loaded = true;
     }
 
+    const _TILESETS = { world_tileset: 1, dungeon_tileset: 1 };
+
     function _initSheets() {
         for (const key in _assets) {
+            const isTile = _TILESETS[key];
+            const fw = isTile ? TILE_FW : SPRITE_FW;
+            const fh = isTile ? TILE_FH : SPRITE_FH;
             _sheets[key] = {
                 img: _assets[key],
-                fw: SPRITE_FW,
-                fh: SPRITE_FH,
-                cols: Math.floor(_assets[key].width / SPRITE_FW),
+                fw, fh,
+                cols: Math.floor(_assets[key].width / fw),
             };
         }
     }
@@ -263,15 +268,23 @@ const ZooEngine = (() => {
             facing: player.facing, walking: pWalking, wf: player.walkFrame,
         });
 
+        // Sort by foot Y position (bottom of tile)
         entities.sort((a, b) => a.y - b.y);
 
+        const charH = Math.floor(ts * SPRITE_FH / TILE_FH);
         for (const ent of entities) {
             const sx = offX + ent.x * ts;
-            const sy = offY + ent.y * ts;
+            const footY = offY + (ent.y + 1) * ts;
+            const sy = footY - charH;
             const sheetKey = CHAR_MAP[ent.key] || 'npc';
             if (!_sheets[sheetKey]) continue;
+            // Drop shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(sx + ts / 2, footY - 2, ts / 2, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
             const fid = _charFrame(ent.facing, ent.walking, ent.wf);
-            _drawFrame(ctx, sheetKey, fid, sx, sy, ts, ts);
+            _drawFrame(ctx, sheetKey, fid, sx, sy, ts, charH);
         }
 
         // Apply retro green filter
@@ -287,7 +300,8 @@ const ZooEngine = (() => {
     function drawBattleSprite(ctx, monsterId, x, y, scale) {
         const sheetKey = CHAR_MAP[monsterId] || 'monster_boss';
         if (!_sheets[sheetKey]) return;
-        const w = SPRITE_FW * scale, h = SPRITE_FH * scale;
+        const s = _sheets[sheetKey];
+        const w = s.fw * scale, h = s.fh * scale;
         _drawFrame(ctx, sheetKey, 0, x - w / 2, y - h / 2, w, h);
     }
 
