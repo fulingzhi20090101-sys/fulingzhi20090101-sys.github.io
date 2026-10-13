@@ -89,6 +89,7 @@
             buildPicker();
             renderCurrencyBar(document.getElementById('currencyBar'), 'george');
             try { vipCloudSync('george'); } catch(e) {}
+            _syncAvatarChanges();
         }
 
         function loadAvatar() {
@@ -108,6 +109,15 @@
             } catch(e) { return 3; }
         }
 
+        function _syncAvatarChanges() {
+            const today = new Date().toISOString().slice(0, 10);
+            _apiGet('/api/daily/george?type=avatar_changes&date=' + today).then(data => {
+                if (data && typeof data.value === 'number' && data.value > 0) {
+                    try { localStorage.setItem(USER_KEY + '_avatar_changes', JSON.stringify({ date: today, count: data.value })); } catch(e) {}
+                }
+            });
+        }
+
         function _recordAvatarChange() {
             try {
                 const today = new Date().toISOString().slice(0, 10);
@@ -118,6 +128,7 @@
                     if (data.date === today) count = (data.count || 0) + 1;
                 }
                 localStorage.setItem(USER_KEY + '_avatar_changes', JSON.stringify({ date: today, count: count }));
+                _apiPost('/api/daily/george', { type: 'avatar_changes', date: today, value: count });
             } catch(e) {}
         }
 

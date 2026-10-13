@@ -500,17 +500,19 @@ class QuizEngine {
     }
 
     _logRound(mode, seconds, earned, correct, total) {
+        const entry = {
+            mode, seconds, earned, correct, total,
+            date: new Date().toISOString().slice(0, 10),
+            time: Date.now()
+        };
         try {
             const key = 'vip_quiz_log_' + this.userId;
             const logs = JSON.parse(localStorage.getItem(key) || '[]');
-            logs.unshift({
-                mode, seconds, earned, correct, total,
-                date: new Date().toISOString().slice(0, 10),
-                time: Date.now()
-            });
+            logs.unshift(entry);
             if (logs.length > 500) logs.length = 500;
             localStorage.setItem(key, JSON.stringify(logs));
         } catch(e) {}
+        _apiPost('/api/balance/' + this.userId, { amount: 0, reason: '做题记录:' + mode + '|' + correct + '/' + total + '|' + seconds + '秒|+' + earned + '文' });
     }
 
     // ── Legacy single-question methods (for match pairs / timed) ──
