@@ -51,13 +51,24 @@
 <body>
     <div id="titleScreen">
         <div class="title-logo">🦁 动物园历险记</div>
-        <div class="title-sub">选择你的角色</div>
-        <div class="char-grid" id="charGrid"></div>
-        <div class="char-detail" id="charDetail">
-            <div style="color:#888;text-align:center;padding:20px">← 点击选择一个角色</div>
+        <div class="title-sub" id="titleSub">加载中...</div>
+
+        <div id="menuScreen" style="display:none;text-align:center;width:90%;max-width:400px">
+            <button class="start-btn" style="width:100%;margin-bottom:15px" onclick="showNewGame()">⚔️ 新的冒险</button>
+            <button class="start-btn" id="continueBtn" style="width:100%;background:linear-gradient(135deg,#3498db,#2980b9);display:none" onclick="continueGame()">📜 旧的回忆</button>
+            <div id="saveInfo" style="color:#888;font-size:0.8rem;margin-top:10px"></div>
         </div>
-        <button class="start-btn" id="startBtn" disabled onclick="startGame()">开始冒险</button>
-        <a href="../../index.html" class="back-link">← 返回主页</a>
+
+        <div id="charScreen" style="display:none;width:100%;display:none;flex-direction:column;align-items:center">
+            <div class="char-grid" id="charGrid"></div>
+            <div class="char-detail" id="charDetail">
+                <div style="color:#888;text-align:center;padding:20px">← 点击选择一个角色</div>
+            </div>
+            <button class="start-btn" id="startBtn" disabled onclick="startNewGame()">开始冒险</button>
+            <button class="back-link" style="border:none;background:none;cursor:pointer;margin-top:15px" onclick="showMenu()">← 返回</button>
+        </div>
+
+        <a href="../../index.html" class="back-link" style="margin-top:20px">← 返回主页</a>
     </div>
 
     <div id="gameScreen">
@@ -71,11 +82,53 @@
         </div>
     </div>
 
-    <script src="characters.js?v=2"></script>
-    <script src="maps.js?v=2"></script>
-    <script src="game.js?v=2"></script>
+    <script src="characters.js?v=3"></script>
+    <script src="maps.js?v=3"></script>
+    <script src="game.js?v=3"></script>
     <script>
         let selectedChar = null;
+        let savedGame = null;
+
+        function initTitle() {
+            buildCharGrid();
+            document.getElementById('titleSub').textContent = '正在检查存档...';
+            loadSaveFromCloud().then(save => {
+                savedGame = save;
+                showMenu();
+            }).catch(() => {
+                savedGame = getLocalSave();
+                showMenu();
+            });
+        }
+
+        function showMenu() {
+            document.getElementById('menuScreen').style.display = 'block';
+            document.getElementById('charScreen').style.display = 'none';
+            if (savedGame && savedGame.charId) {
+                const ch = CHARACTERS.find(c => c.id === savedGame.charId);
+                document.getElementById('continueBtn').style.display = 'block';
+                const info = ch ? ch.name + ' Lv.' + savedGame.player.level : savedGame.charId;
+                let timeStr = '';
+                if (savedGame.savedAt) {
+                    const d = new Date(savedGame.savedAt);
+                    timeStr = ' · 上次保存: ' + d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+                }
+                document.getElementById('saveInfo').textContent = '存档: ' + info + timeStr;
+                document.getElementById('titleSub').textContent = '选择你的旅程';
+            } else {
+                document.getElementById('continueBtn').style.display = 'none';
+                document.getElementById('saveInfo').textContent = '';
+                document.getElementById('titleSub').textContent = '选择你的角色';
+                showNewGame();
+                return;
+            }
+        }
+
+        function showNewGame() {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('charScreen').style.display = 'flex';
+            document.getElementById('titleSub').textContent = '选择你的角色';
+        }
 
         function buildCharGrid() {
             const grid = document.getElementById('charGrid');
@@ -109,12 +162,22 @@
             document.getElementById('startBtn').disabled = false;
         }
 
-        function startGame() {
+        function continueGame() {
+            if (!savedGame) return;
+            enterGame();
+            initGameFromSave(savedGame);
+        }
+
+        function startNewGame() {
             if (!selectedChar) return;
+            enterGame();
+            initGame(selectedChar);
+        }
+
+        function enterGame() {
             document.getElementById('titleScreen').style.display = 'none';
             document.getElementById('gameScreen').style.display = 'block';
             document.getElementById('dpad').classList.add('active');
-            initGame(selectedChar);
             setupDpad();
 
             const canvas = document.getElementById('gameCanvas');
@@ -180,7 +243,7 @@
             });
         }
 
-        buildCharGrid();
+        initTitle();
     </script>
 </body>
 </html>

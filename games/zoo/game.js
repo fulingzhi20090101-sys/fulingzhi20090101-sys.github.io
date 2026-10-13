@@ -3,6 +3,10 @@ let canvas, ctx;
 let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 
+const GAME_VERSION = 'v1.2';
+const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
+const SAVE_LOCAL_KEY = 'zoo_save_jerry';
+
 function initGame(charId) {
     const charData = CHARACTERS.find(c => c.id === charId);
     canvas = document.getElementById('gameCanvas');
@@ -39,10 +43,70 @@ function initGame(charId) {
     };
 
     loadMap('ticket_office');
+    _startGameLoop();
+}
+
+function initGameFromSave(save) {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+
+    const charData = CHARACTERS.find(c => c.id === save.charId);
+    gameState = {
+        player: {
+            charId: save.charId,
+            name: charData.name,
+            emoji: charData.emoji,
+            color: charData.color,
+            level: save.player.level,
+            exp: save.player.exp,
+            expNext: save.player.expNext,
+            gold: save.player.gold,
+            stats: { ...save.player.stats },
+            maxHp: save.player.maxHp,
+            maxMp: save.player.maxMp,
+            skills: charData.skills,
+            buffs: [],
+            x: save.player.x,
+            y: save.player.y,
+        },
+        currentMap: save.currentMap,
+        mapState: save.mapState || {},
+        mode: 'explore',
+        battle: null,
+        dialog: null,
+        message: null,
+        messageTimer: 0,
+        otherPlayers: {},
+        moveQueue: [],
+        lastMove: 0,
+    };
+
+    camReady = false;
+    const map = MAPS[save.currentMap];
+    if (!gameState.mapState[save.currentMap]) {
+        gameState.mapState[save.currentMap] = {
+            bosses: map.bosses ? map.bosses.map(b => ({ ...b })) : [],
+        };
+    }
+    showMessage('存档已读取 — ' + charData.name + ' Lv.' + save.player.level);
+    _startGameLoop();
+}
+
+let _loopStarted = false;
+function _startGameLoop() {
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    setupInput();
-    requestAnimationFrame(gameLoop);
+    if (!_loopStarted) {
+        _loopStarted = true;
+        window.addEventListener('resize', resizeCanvas);
+        setupInput();
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && gameState) saveGame();
+        });
+        window.addEventListener('beforeunload', () => {
+            if (gameState) saveGame();
+        });
+        requestAnimationFrame(gameLoop);
+    }
 }
 
 function resizeCanvas() {
@@ -68,6 +132,7 @@ function loadMap(mapId, toX, toY) {
     }
     camReady = false;
     showMessage(map.enterMsg);
+    if (gameState.mode === 'explore') saveGame();
 }
 
 function getMap() { return MAPS[gameState.currentMap]; }
@@ -294,6 +359,7 @@ function endBattle() {
     gameState.battle = null;
     gameState.player.buffs = [];
     gameState.mode = 'explore';
+    saveGame();
 }
 
 function levelUp() {
@@ -534,6 +600,11 @@ function renderHUD() {
     ctx.fillStyle = '#f1c40f';
     ctx.textAlign = 'right';
     ctx.fillText(mapName, canvas.width - pad - 10, pad + 8);
+
+    ctx.fillStyle = '#666';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(GAME_VERSION, canvas.width - pad - 4, pad + 36);
 }
 
 function renderDialog() {
@@ -704,6 +775,62 @@ function handleBattleClick(cx, cy) {
             return;
         }
     }
+}
+
+// --- SAVE / LOAD ---
+
+function _buildSaveData() {
+    const p = gameState.player;
+    return {
+        charId: p.charId,
+        player: {
+            level: p.level,
+            exp: p.exp,
+            expNext: p.expNext,
+            gold: p.gold,
+            stats: { ...p.stats },
+            maxHp: p.maxHp,
+            maxMp: p.maxMp,
+            x: p.x,
+            y: p.y,
+        },
+        currentMap: gameState.currentMap,
+        mapState: gameState.mapState,
+        version: GAME_VERSION,
+    };
+}
+
+function saveGame() {
+    if (!gameState || gameState.mode === 'battle') return;
+    const data = _buildSaveData();
+    try { localStorage.setItem(SAVE_LOCAL_KEY, JSON.stringify(data)); } catch(e) {}
+    fetch(SAVE_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    }).catch(() => {});
+}
+
+function loadSaveFromCloud() {
+    return fetch(SAVE_API).then(r => r.json()).then(data => {
+        if (data && !data.empty && data.charId) {
+            try { localStorage.setItem(SAVE_LOCAL_KEY, JSON.stringify(data)); } catch(e) {}
+            return data;
+        }
+        return null;
+    }).catch(() => {
+        try {
+            const local = localStorage.getItem(SAVE_LOCAL_KEY);
+            return local ? JSON.parse(local) : null;
+        } catch(e) { return null; }
+    });
+}
+
+function getLocalSave() {
+    try {
+        const raw = localStorage.getItem(SAVE_LOCAL_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
 }
 
 if (!CanvasRenderingContext2D.prototype.roundRect) {
