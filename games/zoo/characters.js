@@ -168,7 +168,7 @@ const NPCS = {
     },
     zookeeper: {
         name: '饲养员小李',
-        emoji: '🧑‍🌾',
+        emoji: '👨',
         dialogs: [
             '大象最近脾气不太好，小心点。',
             '如果你能帮我安抚暴怒的大象，我给你奖励！',

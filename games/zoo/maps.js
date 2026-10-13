@@ -48,8 +48,9 @@ const MAPS = {
         npcs: [
             { id: 'ticket_seller', x: 7, y: 5 },
         ],
-        encounters: [
-            { monsterId: 'ticket_guard', zones: [{ x: 1, y: 1, w: 5, h: 2 }, { x: 10, y: 1, w: 5, h: 2 }], rate: 0.08 },
+        encounters: [],
+        bosses: [
+            { monsterId: 'ticket_guard', x: 7, y: 8, defeated: false },
         ],
         exits: [
             { x: 7, y: 3, toMap: 'elephant_house', toX: 7, toY: 10, label: '→ 大象馆' },
