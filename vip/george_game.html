@@ -133,7 +133,19 @@
         }
 
         function _addGameMinutes(min) {
-            try { localStorage.setItem(_todayGameKey(), String(_getTodayGameMinutes() + min)); } catch(e) {}
+            const newVal = _getTodayGameMinutes() + min;
+            try { localStorage.setItem(_todayGameKey(), String(newVal)); } catch(e) {}
+            const date = new Date().toISOString().slice(0, 10);
+            _apiPost('/api/daily/' + USER_ID, { type: 'game_time', date: date, value: newVal });
+        }
+
+        function _syncGameTime() {
+            const date = new Date().toISOString().slice(0, 10);
+            _apiGet('/api/daily/' + USER_ID + '?type=game_time&date=' + date).then(data => {
+                if (data && typeof data.value === 'number' && data.value > 0) {
+                    try { localStorage.setItem(_todayGameKey(), String(data.value)); } catch(e) {}
+                }
+            });
         }
 
         function _getMultiplier() {
@@ -153,6 +165,7 @@
             VipLogin.record(USER_ID);
             renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
             try { vipCloudSync(USER_ID); } catch(e) {}
+            _syncGameTime();
         }
 
         function selectGame(gameKey) {

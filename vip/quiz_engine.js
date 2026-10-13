@@ -21,6 +21,7 @@ class QuizEngine {
         this.wrongQueue = [];
         this.roundStartTime = 0;
         this.dailyCap = 150;
+        this._syncDailyEarned();
     }
 
     _todayKey() { return 'vip_daily_earned_' + this.userId + '_' + new Date().toISOString().slice(0, 10); }
@@ -30,7 +31,19 @@ class QuizEngine {
     }
 
     _addTodayEarned(amount) {
-        try { localStorage.setItem(this._todayKey(), String(this._getTodayEarned() + amount)); } catch(e) {}
+        const newVal = this._getTodayEarned() + amount;
+        try { localStorage.setItem(this._todayKey(), String(newVal)); } catch(e) {}
+        const date = new Date().toISOString().slice(0, 10);
+        _apiPost('/api/daily/' + this.userId, { type: 'quiz_earned', date: date, value: newVal });
+    }
+
+    _syncDailyEarned() {
+        const date = new Date().toISOString().slice(0, 10);
+        _apiGet('/api/daily/' + this.userId + '?type=quiz_earned&date=' + date).then(data => {
+            if (data && typeof data.value === 'number' && data.value > 0) {
+                try { localStorage.setItem(this._todayKey(), String(data.value)); } catch(e) {}
+            }
+        });
     }
 
     _canEarnMore() { return this._getTodayEarned() < this.dailyCap; }
