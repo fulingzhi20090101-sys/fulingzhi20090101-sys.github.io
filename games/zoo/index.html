@@ -53,6 +53,11 @@
         .d-pad .center { left: 62px; top: 62px; font-size: 1.2rem; background: rgba(241,196,15,0.3); border-color: rgba(241,196,15,0.4); }
         #exitBtn { position: fixed; top: 12px; right: 12px; z-index: 10; display: none; width: 44px; height: 44px; border: 2px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.5); color: #fff; font-size: 1.2rem; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         #exitBtn:active { background: rgba(255,255,255,0.3); }
+        .theme-row { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; width: 92%; max-width: 360px; }
+        .theme-btn { flex: 1; padding: 8px 4px; border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.75rem; transition: all 0.2s; }
+        .theme-btn:active, .theme-btn.selected { border-color: var(--gold); background: rgba(241,196,15,0.12); }
+        .theme-btn .t-icon { font-size: 1.2rem; display: block; margin-bottom: 2px; }
+        .theme-btn .t-name { font-weight: bold; }
     </style>
 </head>
 <body>
@@ -61,6 +66,11 @@
         <div class="title-sub" id="titleSub">加载中...</div>
 
         <div id="menuScreen" style="display:none;text-align:center;width:90%;max-width:400px">
+            <div class="theme-row" id="themeRow">
+                <button class="theme-btn selected" data-theme="classic" onclick="selectTheme('classic')"><span class="t-icon">🎭</span><span class="t-name">经典</span></button>
+                <button class="theme-btn" data-theme="retro" onclick="selectTheme('retro')"><span class="t-icon">📟</span><span class="t-name">怀旧</span></button>
+                <button class="theme-btn" data-theme="pixel" onclick="selectTheme('pixel')"><span class="t-icon">🎮</span><span class="t-name">像素</span></button>
+            </div>
             <button class="start-btn" style="width:100%;margin-bottom:15px" onclick="showNewGame()">⚔️ 新的冒险</button>
             <button class="start-btn" id="continueBtn" style="width:100%;background:linear-gradient(135deg,#3498db,#2980b9);display:none" onclick="continueGame()">📜 旧的回忆</button>
             <div id="saveInfo" style="color:#888;font-size:0.8rem;margin-top:10px"></div>
@@ -90,14 +100,36 @@
         </div>
     </div>
 
-    <script src="characters.js?v=8"></script>
-    <script src="maps.js?v=8"></script>
-    <script src="game.js?v=8"></script>
+    <script src="themes.js?v=9"></script>
+    <script src="characters.js?v=9"></script>
+    <script src="maps.js?v=9"></script>
+    <script src="game.js?v=9"></script>
     <script>
         let selectedChar = null;
         let savedGame = null;
 
+        function selectTheme(theme) {
+            currentTheme = theme;
+            document.querySelectorAll('.theme-btn').forEach(b => {
+                b.classList.toggle('selected', b.dataset.theme === theme);
+            });
+            try { localStorage.setItem('zoo_theme', theme); } catch(e) {}
+        }
+
+        function loadTheme() {
+            try {
+                const t = localStorage.getItem('zoo_theme');
+                if (t && THEME_INFO[t]) {
+                    currentTheme = t;
+                    document.querySelectorAll('.theme-btn').forEach(b => {
+                        b.classList.toggle('selected', b.dataset.theme === t);
+                    });
+                }
+            } catch(e) {}
+        }
+
         function initTitle() {
+            loadTheme();
             buildCharGrid();
             document.getElementById('titleSub').textContent = '正在检查存档...';
             loadSaveFromCloud().then(save => {

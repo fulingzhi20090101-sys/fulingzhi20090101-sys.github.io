@@ -3,7 +3,7 @@ let canvas, ctx;
 let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 
-const GAME_VERSION = 'v1.4';
+const GAME_VERSION = 'v1.5';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -322,31 +322,41 @@ function renderNpcMenu() {
     const boxX = (canvas.width - boxW) / 2;
     const boxY = (canvas.height - boxH) / 2;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    const pal = PALETTES[currentTheme];
+    const isRetro = currentTheme === 'retro';
+
+    ctx.fillStyle = pal ? 'rgba(15,56,15,0.5)' : 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.92)';
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.92)';
     ctx.fillRect(boxX, boxY, boxW, boxH);
-    ctx.strokeStyle = '#f1c40f';
+    ctx.strokeStyle = pal ? pal.uiBorder : '#f1c40f';
     ctx.lineWidth = 2;
     ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-    ctx.fillStyle = '#f1c40f';
+    ctx.fillStyle = pal ? pal.accent : '#f1c40f';
     ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(emoji + ' ' + name, boxX + boxW / 2, boxY + 28);
+    const titleText = isRetro ? name : (emoji + ' ' + name);
+    ctx.fillText(titleText, boxX + boxW / 2, boxY + 28);
 
     const btnW = boxW - 30;
     const btnH = 36;
     const startY = boxY + 55;
     const gap = 6;
 
-    const options = [
-        { label: '💬 对话', color: '#3498db', action: 'talk' },
-        { label: '🔍 查看', color: '#9b59b6', action: 'view' },
-        { label: '⚔️ 战斗', color: '#e74c3c', action: 'battle' },
-        { label: '👋 离开', color: '#7f8c8d', action: 'leave' },
+    const retroLabels = ['对话', '查看', '战斗', '离开'];
+    const options = isRetro ? [
+        { label: '> 对话', color: pal.mid, action: 'talk' },
+        { label: '> 查看', color: pal.mid, action: 'view' },
+        { label: '> 战斗', color: pal.mid, action: 'battle' },
+        { label: '> 离开', color: pal.mid, action: 'leave' },
+    ] : [
+        { label: '💬 对话', color: pal ? '#2980b9' : '#3498db', action: 'talk' },
+        { label: '🔍 查看', color: pal ? '#7d3c98' : '#9b59b6', action: 'view' },
+        { label: '⚔️ 战斗', color: pal ? '#c0392b' : '#e74c3c', action: 'battle' },
+        { label: '👋 离开', color: pal ? '#5a6a6a' : '#7f8c8d', action: 'leave' },
     ];
 
     options.forEach((opt, i) => {
@@ -583,7 +593,9 @@ function gameLoop(ts) {
 }
 
 function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const pal = PALETTES[currentTheme];
+    ctx.fillStyle = pal ? pal.bg : '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (gameState.mode === 'battle') {
         renderBattle();
     } else if (gameState.mode === 'npc_menu') {
@@ -623,21 +635,33 @@ function renderMap() {
     updateCamera();
     const offsetX = Math.floor(canvas.width / 2 - camX);
     const offsetY = Math.floor(canvas.height / 2 - camY);
+    const isPixel = currentTheme !== 'classic';
 
     for (let y = 0; y < map.height; y++) {
         for (let x = 0; x < map.width; x++) {
             const tile = map.tiles[y * map.width + x];
-            const tr = TILE_RENDER[tile];
             const sx = offsetX + x * TILE_SIZE;
             const sy = offsetY + y * TILE_SIZE;
             if (sx > canvas.width || sy > canvas.height || sx + TILE_SIZE < 0 || sy + TILE_SIZE < 0) continue;
-            ctx.fillStyle = tr.bg;
-            ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
-            if (tr.char) {
-                ctx.font = (TILE_SIZE * 0.6) + 'px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(tr.char, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+
+            if (isPixel) {
+                let handled = false;
+                if (currentTheme === 'retro') handled = getRetroTilePattern(ctx, tile, sx, sy, TILE_SIZE);
+                else handled = getPixelTilePattern(ctx, tile, sx, sy, TILE_SIZE);
+                if (!handled) {
+                    ctx.fillStyle = getTileColor(tile) || TILE_RENDER[tile].bg;
+                    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                }
+            } else {
+                const tr = TILE_RENDER[tile];
+                ctx.fillStyle = tr.bg;
+                ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                if (tr.char) {
+                    ctx.font = (TILE_SIZE * 0.6) + 'px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(tr.char, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+                }
             }
         }
     }
@@ -646,11 +670,16 @@ function renderMap() {
         for (const ex of map.exits) {
             const sx = offsetX + ex.x * TILE_SIZE;
             const sy = offsetY + ex.y * TILE_SIZE;
-            ctx.font = (TILE_SIZE * 0.5) + 'px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#ff9800';
-            ctx.fillText('🚪', sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+            if (isPixel) {
+                const pal = PALETTES[currentTheme];
+                drawPixelSprite(ctx, 'door', sx, sy, TILE_SIZE, currentTheme === 'retro' ? pal.dark : '#d4883a');
+            } else {
+                ctx.font = (TILE_SIZE * 0.5) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ff9800';
+                ctx.fillText('🚪', sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+            }
         }
     }
 
@@ -659,10 +688,15 @@ function renderMap() {
             const npc = NPCS[n.id];
             const sx = offsetX + n.x * TILE_SIZE;
             const sy = offsetY + n.y * TILE_SIZE;
-            ctx.font = (TILE_SIZE * 0.7) + 'px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(npc.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+            if (isPixel) {
+                const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS[n.id] || '#e0e0e0');
+                drawPixelSprite(ctx, 'npc', sx, sy, TILE_SIZE, color);
+            } else {
+                ctx.font = (TILE_SIZE * 0.7) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(npc.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+            }
         }
     }
 
@@ -673,10 +707,16 @@ function renderMap() {
             const mon = MONSTERS[b.monsterId];
             const sx = offsetX + b.x * TILE_SIZE;
             const sy = offsetY + b.y * TILE_SIZE;
-            ctx.font = (TILE_SIZE * 0.8) + 'px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(mon.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+            if (isPixel) {
+                const spriteKey = MONSTER_SPRITE_MAP[b.monsterId] || 'boss';
+                const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS[b.monsterId] || '#e04040');
+                drawPixelSprite(ctx, spriteKey, sx, sy, TILE_SIZE, color);
+            } else {
+                ctx.font = (TILE_SIZE * 0.8) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(mon.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+            }
         }
     }
 
@@ -685,59 +725,76 @@ function renderMap() {
         if (op.map !== gameState.currentMap) continue;
         const sx = offsetX + op.x * TILE_SIZE;
         const sy = offsetY + op.y * TILE_SIZE;
-        ctx.font = (TILE_SIZE * 0.7) + 'px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(op.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
-        ctx.font = '11px sans-serif';
-        ctx.fillStyle = '#fff';
-        ctx.fillText(op.name, sx + TILE_SIZE / 2, sy - 4);
+        if (isPixel) {
+            drawPixelSprite(ctx, 'player', sx, sy, TILE_SIZE, currentTheme === 'retro' ? PALETTES.retro.dark : '#e8d44d');
+        } else {
+            ctx.font = (TILE_SIZE * 0.7) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(op.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
+            ctx.font = '11px sans-serif';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(op.name, sx + TILE_SIZE / 2, sy - 4);
+        }
     }
 
     const px = offsetX + gameState.player.x * TILE_SIZE;
     const py = offsetY + gameState.player.y * TILE_SIZE;
-    ctx.font = (TILE_SIZE * 0.8) + 'px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(gameState.player.emoji, px + TILE_SIZE / 2, py + TILE_SIZE / 2);
+    if (isPixel) {
+        const color = currentTheme === 'retro' ? PALETTES.retro.dark : (PIXEL_CHAR_COLORS.player || '#e8d44d');
+        drawPixelSprite(ctx, 'player', px, py, TILE_SIZE, color);
+    } else {
+        ctx.font = (TILE_SIZE * 0.8) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(gameState.player.emoji, px + TILE_SIZE / 2, py + TILE_SIZE / 2);
+    }
 }
 
 function renderHUD() {
     const p = gameState.player;
     const pad = 8;
     const w = 210, h = 100;
+    const pal = PALETTES[currentTheme];
+    const isRetro = currentTheme === 'retro';
 
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.75)';
     ctx.fillRect(pad, pad, w, h);
+    if (pal) {
+        ctx.strokeStyle = pal.uiBorder;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(pad, pad, w, h);
+    }
 
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = pal ? pal.text : '#fff';
     ctx.font = 'bold 15px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(p.emoji + ' ' + p.name + '  Lv.' + p.level, pad + 8, pad + 8);
+    const namePrefix = isRetro ? '' : (p.emoji + ' ');
+    ctx.fillText(namePrefix + p.name + '  Lv.' + p.level, pad + 8, pad + 8);
 
-    ctx.fillStyle = '#e74c3c';
+    ctx.fillStyle = isRetro ? pal.mid : '#e74c3c';
     ctx.fillRect(pad + 8, pad + 30, 90, 12);
-    ctx.fillStyle = '#2ecc71';
+    ctx.fillStyle = pal ? pal.hpBar : '#2ecc71';
     ctx.fillRect(pad + 8, pad + 30, 90 * (p.stats.hp / p.maxHp), 12);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = pal ? pal.text : '#fff';
     ctx.font = '12px sans-serif';
     ctx.fillText('HP ' + p.stats.hp + '/' + p.maxHp, pad + 102, pad + 30);
 
-    ctx.fillStyle = '#555';
+    ctx.fillStyle = isRetro ? pal.mid : '#555';
     ctx.fillRect(pad + 8, pad + 48, 90, 12);
-    ctx.fillStyle = '#3498db';
+    ctx.fillStyle = pal ? pal.mpBar : '#3498db';
     ctx.fillRect(pad + 8, pad + 48, 90 * (p.stats.mp / p.maxMp), 12);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = pal ? pal.text : '#fff';
     ctx.fillText('MP ' + p.stats.mp + '/' + p.maxMp, pad + 102, pad + 48);
 
-    ctx.fillStyle = '#f1c40f';
+    ctx.fillStyle = pal ? pal.accent : '#f1c40f';
     ctx.font = '13px sans-serif';
-    ctx.fillText('💰 ' + p.gold, pad + 8, pad + 68);
-    ctx.fillStyle = '#ccc';
+    ctx.fillText((isRetro ? '' : '💰 ') + p.gold + '金', pad + 8, pad + 68);
+    ctx.fillStyle = pal ? pal.text : '#ccc';
     ctx.fillText('EXP ' + p.exp + '/' + p.expNext, pad + 80, pad + 68);
 
-    ctx.fillStyle = '#666';
+    ctx.fillStyle = pal ? pal.mid : '#666';
     ctx.font = '10px sans-serif';
     ctx.fillText(GAME_VERSION + ' · ' + getMap().name, pad + 8, pad + 86);
 }
@@ -747,36 +804,43 @@ function renderDialog() {
     const pad = 12;
     const h = 120;
     const y = canvas.height - h - pad;
+    const pal = PALETTES[currentTheme];
 
-    ctx.fillStyle = 'rgba(0,0,0,0.9)';
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.9)';
     ctx.fillRect(pad, y, canvas.width - pad * 2, h);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = pal ? pal.uiBorder : '#fff';
+    ctx.lineWidth = pal ? 2 : 1;
     ctx.strokeRect(pad, y, canvas.width - pad * 2, h);
 
-    ctx.fillStyle = '#f1c40f';
+    ctx.fillStyle = pal ? pal.accent : '#f1c40f';
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(d.speaker, pad + 12, y + 10);
 
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = pal ? pal.text : '#fff';
     ctx.font = '16px sans-serif';
     wrapText(d.text, pad + 12, y + 36, canvas.width - pad * 2 - 24, 22);
 
-    ctx.fillStyle = '#999';
+    ctx.fillStyle = pal ? pal.mid : '#999';
     ctx.font = '13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('点击或按Enter继续', canvas.width - pad - 12, y + h - 20);
+    ctx.fillText('点击继续', canvas.width - pad - 12, y + h - 20);
 }
 
 function renderMessage() {
+    const pal = PALETTES[currentTheme];
     ctx.font = '15px sans-serif';
     const tw = ctx.measureText(gameState.message).width;
     const w = Math.min(tw + 40, canvas.width - 40);
-    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.85)';
     ctx.fillRect((canvas.width - w) / 2, canvas.height - 60, w, 36);
-    ctx.fillStyle = '#fff';
+    if (pal) {
+        ctx.strokeStyle = pal.uiBorder;
+        ctx.lineWidth = 1;
+        ctx.strokeRect((canvas.width - w) / 2, canvas.height - 60, w, 36);
+    }
+    ctx.fillStyle = pal ? pal.text : '#fff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(gameState.message, canvas.width / 2, canvas.height - 42);
