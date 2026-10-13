@@ -3,7 +3,7 @@ let canvas, ctx;
 let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 
-const GAME_VERSION = 'v1.2';
+const GAME_VERSION = 'v1.3';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
