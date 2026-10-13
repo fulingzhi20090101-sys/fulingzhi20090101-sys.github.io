@@ -677,9 +677,6 @@ function renderMap() {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(mon.emoji, sx + TILE_SIZE / 2, sy + TILE_SIZE / 2);
-            ctx.font = '10px sans-serif';
-            ctx.fillStyle = '#e74c3c';
-            ctx.fillText('BOSS', sx + TILE_SIZE / 2, sy + 6);
         }
     }
 
@@ -708,7 +705,7 @@ function renderMap() {
 function renderHUD() {
     const p = gameState.player;
     const pad = 8;
-    const w = 210, h = 90;
+    const w = 210, h = 100;
 
     ctx.fillStyle = 'rgba(0,0,0,0.75)';
     ctx.fillRect(pad, pad, w, h);
@@ -740,19 +737,9 @@ function renderHUD() {
     ctx.fillStyle = '#ccc';
     ctx.fillText('EXP ' + p.exp + '/' + p.expNext, pad + 80, pad + 68);
 
-    const mapName = getMap().name;
-    ctx.font = 'bold 16px sans-serif';
-    const mnw = ctx.measureText(mapName).width + 20;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(canvas.width - mnw - pad, pad, mnw, 30);
-    ctx.fillStyle = '#f1c40f';
-    ctx.textAlign = 'right';
-    ctx.fillText(mapName, canvas.width - pad - 10, pad + 8);
-
     ctx.fillStyle = '#666';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(GAME_VERSION, canvas.width - pad - 4, pad + 36);
+    ctx.font = '10px sans-serif';
+    ctx.fillText(GAME_VERSION + ' · ' + getMap().name, pad + 8, pad + 86);
 }
 
 function renderDialog() {
