@@ -189,7 +189,7 @@ const NPCS = {
     },
     vending_machine: {
         name: '自动售货机',
-        emoji: '🏧',
+        emoji: '🏪',
         info: '投币购买饮料和零食。',
         dialogs: ['叮～请选择商品。'],
     },

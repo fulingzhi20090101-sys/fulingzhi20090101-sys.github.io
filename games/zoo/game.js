@@ -4,7 +4,7 @@ let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 let gameArea = { x: 0, y: 0, w: 0, h: 0 };
 
-const GAME_VERSION = 'v4.0';
+const GAME_VERSION = 'v4.1';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -262,7 +262,10 @@ function getItemQty(itemId) {
     return item ? item.qty : 0;
 }
 
+let _lastUseTime = 0;
 function useItem(itemId) {
+    if (Date.now() - _lastUseTime < 300) return false;
+    _lastUseTime = Date.now();
     const def = ITEMS[itemId];
     if (!def) return false;
     const p = gameState.player;
@@ -286,7 +289,8 @@ function useItem(itemId) {
 
         if (!removeItem(itemId, 1)) return false;
 
-        let msg = '使用了' + def.emoji + def.name + '！';
+        const remaining = getItemQty(itemId);
+        let msg = '使用了' + def.emoji + def.name + (remaining > 0 ? '（剩余' + remaining + '个）' : '（已用完）');
         if (isFood) {
             p.hunger = Math.min(130, p.hunger + def.hunger);
             if (p.hunger > 100) msg = '吃的太撑了！饥饿:' + Math.floor(p.hunger);
@@ -309,6 +313,15 @@ function useItem(itemId) {
 
 function movePlayer(dx, dy) {
     if (gameState.mode !== 'explore') return;
+    const p = gameState.player;
+    if (p.hunger <= 0) {
+        showMessage('😫 你太饿了，无法移动！打开背包吃点东西吧', 2000);
+        return;
+    }
+    if (p.thirst <= 0) {
+        showMessage('😫 你太渴了，无法移动！打开背包喝点水吧', 2000);
+        return;
+    }
     const now = Date.now();
     if (now - gameState.lastMove < 150) return;
     gameState.lastMove = now;
@@ -375,23 +388,10 @@ function applyStepEffects() {
     p.hp = Math.min(p.maxHp, p.hp + 1);
 
     if (p.hunger <= 0) {
-        showMessage('💀 你饿晕了...被送回了售票处', 4000);
-        p.hunger = 30;
-        p.thirst = Math.max(p.thirst, 20);
-        p.hp = Math.floor(p.maxHp * 0.3);
-        loadMap('ticket_office');
-        return;
-    }
-    if (p.thirst <= 0) {
-        showMessage('💀 你渴晕了...被送回了售票处', 4000);
-        p.thirst = 30;
-        p.hunger = Math.max(p.hunger, 20);
-        p.hp = Math.floor(p.maxHp * 0.3);
-        loadMap('ticket_office');
-        return;
-    }
-
-    if (p.hunger < 30) {
+        showMessage('😫 你太饿了，无法继续移动！从背包里找吃的吧', 3000);
+    } else if (p.thirst <= 0) {
+        showMessage('😫 你太渴了，无法继续移动！从背包里找水喝吧', 3000);
+    } else if (p.hunger < 30) {
         showMessage('⚠️ 你太饿了，吃点东西吧！', 2000);
     } else if (p.thirst < 30) {
         showMessage('⚠️ 你太渴了，喝点水吧！', 2000);
@@ -425,10 +425,6 @@ function interactWithNpc(npcId) {
         openShop('ice_cream');
         return;
     }
-    if (npcId === 'ticket_seller') {
-        openShop('ticket');
-        return;
-    }
     showNpcMenu('npc', npcId, null);
 }
 
@@ -436,7 +432,7 @@ function openShop(shopType) {
     let stock, title;
     if (shopType === 'vending') {
         stock = VENDING_STOCK;
-        title = '🏧 自动售货机';
+        title = '🏪 自动售货机';
     } else if (shopType === 'ice_cream') {
         stock = ICE_CREAM_STOCK;
         title = '🍦 冰淇淋车';
@@ -448,7 +444,10 @@ function openShop(shopType) {
     gameState.mode = 'shop';
 }
 
+let _lastBuyTime = 0;
 function buyItem(itemId, price) {
+    if (Date.now() - _lastBuyTime < 300) return;
+    _lastBuyTime = Date.now();
     const p = gameState.player;
     if (p.gold < price) {
         showMessage('💰 金币不足！需要' + price + '元');
@@ -457,7 +456,7 @@ function buyItem(itemId, price) {
     p.gold -= price;
     addItem(itemId, 1);
     const def = ITEMS[itemId];
-    showMessage('购买了' + def.emoji + def.name + '！(-' + price + '元)');
+    showMessage('购买了' + def.emoji + def.name + '！(-' + price + '元，余' + p.gold + '元)');
 }
 
 function talkToNpc(npcId) {
@@ -515,6 +514,21 @@ function handleNpcMenuAction(action) {
         }
         gameState.mode = 'dialog';
         gameState.npcMenu = null;
+    } else if (action === 'trade') {
+        gameState.npcMenu = null;
+        if (menu.id === 'ticket_seller') {
+            const p = gameState.player;
+            if (p.gold < 2) {
+                showMessage('💰 你的钱不够买门票！需要2元');
+                gameState.mode = 'explore';
+            } else {
+                showConfirm('🎫 售票处', '要用2元钱买一张门票吗？', () => {
+                    buyItem('ticket', 2);
+                });
+            }
+        } else {
+            gameState.mode = 'explore';
+        }
     } else if (action === 'battle') {
         if (menu.type === 'npc') {
             gameState.dialog = {
@@ -607,6 +621,28 @@ function handleShopClick(cx, cy) {
     }
 }
 
+// --- CONFIRM DIALOG ---
+
+let confirmButtons = [];
+
+function showConfirm(title, text, onYes) {
+    gameState.confirm = { title: title, text: text, onYes: onYes };
+    gameState.mode = 'confirm';
+}
+
+function handleConfirmClick(cx, cy) {
+    for (const btn of confirmButtons) {
+        if (cx >= btn.x && cx <= btn.x + btn.w && cy >= btn.y && cy <= btn.y + btn.h) {
+            if (btn.action === 'yes' && gameState.confirm && gameState.confirm.onYes) {
+                gameState.confirm.onYes();
+            }
+            gameState.confirm = null;
+            gameState.mode = 'explore';
+            return;
+        }
+    }
+}
+
 // --- MENU BUTTON ---
 
 function getMenuButtonRect() {
@@ -622,7 +658,10 @@ function isMenuButtonHit(cx, cy) {
 
 // --- CENTRAL CLICK HANDLER ---
 
+let _clickHandledTime = 0;
+
 function handleCanvasClick(cx, cy) {
+    _clickHandledTime = Date.now();
     if (gameState.mode === 'battle') {
         handleBattleClick(cx, cy);
     } else if (gameState.mode === 'npc_menu') {
@@ -635,6 +674,8 @@ function handleCanvasClick(cx, cy) {
         handleInventoryClick(cx, cy);
     } else if (gameState.mode === 'shop') {
         handleShopClick(cx, cy);
+    } else if (gameState.mode === 'confirm') {
+        handleConfirmClick(cx, cy);
     } else if (gameState.mode === 'dialog') {
         if (Date.now() - _npcMenuActionTime < 400) return;
         gameState.mode = 'explore';
@@ -828,6 +869,13 @@ function setupInput() {
             }
             return;
         }
+        if (gameState.mode === 'confirm') {
+            if (e.key === 'Escape') {
+                gameState.confirm = null;
+                gameState.mode = 'explore';
+            }
+            return;
+        }
         if (gameState.mode === 'battle') return;
         if (e.key === 'ArrowUp' || e.key === 'w') movePlayer(0, -1);
         if (e.key === 'ArrowDown' || e.key === 's') movePlayer(0, 1);
@@ -846,18 +894,12 @@ function setupInput() {
         const t = e.touches[0];
         touchStartX = t.clientX;
         touchStartY = t.clientY;
-
-        if (gameState.mode === 'dialog') {
-            if (Date.now() - _npcMenuActionTime < 400) return;
-            gameState.mode = 'explore';
-            gameState.dialog = null;
-            return;
-        }
     }, { passive: false });
 
     canvas.addEventListener('touchend', e => {
         e.preventDefault();
         if (gameState.mode !== 'explore') return;
+        if (Date.now() - _clickHandledTime < 300) return;
         const t = e.changedTouches[0];
         const dx = t.clientX - touchStartX;
         const dy = t.clientY - touchStartY;
@@ -903,6 +945,10 @@ function render() {
         renderMap();
         renderHUD();
         renderShop();
+    } else if (gameState.mode === 'confirm') {
+        renderMap();
+        renderHUD();
+        renderConfirm();
     } else {
         renderMap();
         renderHUD();
@@ -1449,6 +1495,54 @@ function renderShop() {
     shopButtons.push({ x: lx, y: bottomY, w: iw, h: 32, action: 'close' });
 }
 
+function renderConfirm() {
+    const c = gameState.confirm;
+    if (!c) return;
+    confirmButtons = [];
+    const pal = PALETTES[currentTheme];
+
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const boxW = 280, boxH = 160;
+    const boxX = (canvas.width - boxW) / 2;
+    const boxY = (canvas.height - boxH) / 2;
+
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.95)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = pal ? pal.uiBorder : '#f1c40f';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    ctx.fillStyle = pal ? pal.accent : '#f1c40f';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(c.title, boxX + boxW / 2, boxY + 30);
+
+    ctx.fillStyle = pal ? pal.text : '#fff';
+    ctx.font = '15px sans-serif';
+    ctx.fillText(c.text, boxX + boxW / 2, boxY + 70);
+
+    const btnW = 100, btnH = 38;
+    const btnY = boxY + boxH - 52;
+
+    const yesX = boxX + boxW / 2 - btnW - 10;
+    ctx.fillStyle = '#27ae60';
+    ctx.fillRect(yesX, btnY, btnW, btnH);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('是', yesX + btnW / 2, btnY + btnH / 2);
+    confirmButtons.push({ x: yesX, y: btnY, w: btnW, h: btnH, action: 'yes' });
+
+    const noX = boxX + boxW / 2 + 10;
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(noX, btnY, btnW, btnH);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('否', noX + btnW / 2, btnY + btnH / 2);
+    confirmButtons.push({ x: noX, y: btnY, w: btnW, h: btnH, action: 'no' });
+}
+
 function renderNpcMenu() {
     renderMap();
     renderHUD();
@@ -1471,7 +1565,25 @@ function renderNpcMenu() {
     const pal = PALETTES[currentTheme];
     const isRetro = currentTheme === 'retro';
 
-    const boxW = 240, boxH = 220;
+    const isTicketSeller = menu.type === 'npc' && menu.id === 'ticket_seller';
+    const isNpc = menu.type === 'npc';
+    const allOpts = [
+        { label: '💬 对话', retro: '> 对话', color: '#3498db', action: 'talk', show: true },
+        { label: '💰 交易', retro: '> 交易', color: '#e67e22', action: 'trade', show: isTicketSeller },
+        { label: '🔍 查看', retro: '> 查看', color: '#9b59b6', action: 'view', show: !isTicketSeller },
+        { label: '⚔️ 战斗', retro: '> 战斗', color: '#e74c3c', action: 'battle', show: !isNpc },
+        { label: '👋 离开', retro: '> 离开', color: '#7f8c8d', action: 'leave', show: true },
+    ];
+    const options = allOpts.filter(o => o.show).map(o => ({
+        label: isRetro ? o.retro : o.label,
+        color: isRetro ? pal.mid : o.color,
+        action: o.action,
+    }));
+
+    const btnH = 36;
+    const gap = 6;
+    const boxW = 240;
+    const boxH = 55 + options.length * (btnH + gap) + 5;
     const boxX = (canvas.width - boxW) / 2;
     const boxY = (canvas.height - boxH) / 2;
 
@@ -1492,21 +1604,7 @@ function renderNpcMenu() {
     ctx.fillText(titleText, boxX + boxW / 2, boxY + 28);
 
     const btnW = boxW - 30;
-    const btnH = 36;
     const startY = boxY + 55;
-    const gap = 6;
-
-    const options = isRetro ? [
-        { label: '> 对话', color: pal.mid, action: 'talk' },
-        { label: '> 查看', color: pal.mid, action: 'view' },
-        { label: '> 战斗', color: pal.mid, action: 'battle' },
-        { label: '> 离开', color: pal.mid, action: 'leave' },
-    ] : [
-        { label: '💬 对话', color: '#3498db', action: 'talk' },
-        { label: '🔍 查看', color: '#9b59b6', action: 'view' },
-        { label: '⚔️ 战斗', color: '#e74c3c', action: 'battle' },
-        { label: '👋 离开', color: '#7f8c8d', action: 'leave' },
-    ];
 
     options.forEach((opt, i) => {
         const bx = boxX + 15;

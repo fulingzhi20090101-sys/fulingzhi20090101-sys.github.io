@@ -108,11 +108,11 @@
         </div>
     </div>
 
-    <script src="engine.js?v=17"></script>
-    <script src="themes.js?v=17"></script>
-    <script src="characters.js?v=17"></script>
-    <script src="maps.js?v=17"></script>
-    <script src="game.js?v=17"></script>
+    <script src="engine.js?v=18"></script>
+    <script src="themes.js?v=18"></script>
+    <script src="characters.js?v=18"></script>
+    <script src="maps.js?v=18"></script>
+    <script src="game.js?v=18"></script>
     <script>
         const AVATARS = ['🧒','👦','👧','👨','👩','🧓','👴','👵','🐶','🐱','🐰','🐼','🐨','🦊','🐯','🦁','🐮','🐷','🐵','🐸','🐲','🦄','🐧','🐺'];
         let selectedAvatar = null;
@@ -261,15 +261,18 @@
             }
 
             const canvas = document.getElementById('gameCanvas');
+            let _lastTouchClickTime = 0;
             function canvasXY(clientX, clientY) {
                 const r = canvas.getBoundingClientRect();
                 return { x: (clientX - r.left) * (canvas.width / r.width), y: (clientY - r.top) * (canvas.height / r.height) };
             }
             canvas.addEventListener('click', e => {
+                if (Date.now() - _lastTouchClickTime < 500) return;
                 const c = canvasXY(e.clientX, e.clientY);
                 handleCanvasClick(c.x, c.y);
             });
             canvas.addEventListener('touchstart', e => {
+                _lastTouchClickTime = Date.now();
                 const t = e.touches[0];
                 const c = canvasXY(t.clientX, t.clientY);
                 handleCanvasClick(c.x, c.y);
@@ -320,6 +323,9 @@
                     gameState.mode = 'explore';
                 } else if (gameState.mode === 'shop') {
                     gameState.shop = null;
+                    gameState.mode = 'explore';
+                } else if (gameState.mode === 'confirm') {
+                    gameState.confirm = null;
                     gameState.mode = 'explore';
                 } else if (gameState.mode === 'char_info' || gameState.mode === 'inventory') {
                     gameState.mode = 'game_menu';
