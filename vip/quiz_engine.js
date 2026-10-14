@@ -512,7 +512,7 @@ class QuizEngine {
             if (logs.length > 500) logs.length = 500;
             localStorage.setItem(key, JSON.stringify(logs));
         } catch(e) {}
-        _apiPost('/api/balance/' + this.userId, { amount: 0, reason: '做题记录:' + mode + '|' + correct + '/' + total + '|' + seconds + '秒|+' + earned + '文' });
+        _apiPost('/api/quiz-log/' + this.userId, { mode, correct, total, seconds, earned });
     }
 
     // ── Legacy single-question methods (for match pairs / timed) ──
