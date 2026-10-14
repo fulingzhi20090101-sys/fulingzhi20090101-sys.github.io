@@ -101,6 +101,9 @@ const ZooEngine = (() => {
         parrot:         'monster_bat',
         peacock:        'monster_bat',
         phoenix:        'monster_boss',
+        wang_ayi:       'npc',
+        zhang_shushu:   'npc',
+        li_nainai:      'mage',
     };
 
     // Walk sprite sheet layout (3 cols × 4 rows, each 16×16):

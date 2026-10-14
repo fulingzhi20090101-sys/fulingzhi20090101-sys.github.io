@@ -48,6 +48,7 @@ const MAPS = {
         npcs: [
             { id: 'ticket_seller', x: 5, y: 5 },
             { id: 'vending_machine', x: 10, y: 5 },
+            { id: 'wang_ayi', x: 3, y: 9 },
         ],
         encounters: [],
         bosses: [
@@ -84,6 +85,7 @@ const MAPS = {
             { id: 'zookeeper', x: 8, y: 6 },
             { id: 'vending_machine', x: 3, y: 6 },
             { id: 'ice_cream_cart', x: 12, y: 6 },
+            { id: 'zhang_shushu', x: 12, y: 10 },
         ],
         encounters: [],
         bosses: [
@@ -120,6 +122,7 @@ const MAPS = {
         npcs: [
             { id: 'bird_keeper', x: 7, y: 7 },
             { id: 'vending_machine', x: 11, y: 4 },
+            { id: 'li_nainai', x: 3, y: 4 },
         ],
         encounters: [],
         bosses: [

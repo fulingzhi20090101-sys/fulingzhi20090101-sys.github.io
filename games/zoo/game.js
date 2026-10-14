@@ -4,7 +4,7 @@ let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 let gameArea = { x: 0, y: 0, w: 0, h: 0 };
 
-const GAME_VERSION = 'v4.1';
+const GAME_VERSION = 'v4.2';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -76,6 +76,9 @@ function initGame(playerName, playerEmoji) {
             x: 0, y: 0,
             facing: 'down',
             walkFrame: 0,
+            _giftedBy: {},
+            _walletDropped: false,
+            _stepCount: 0,
         },
         currentMap: null,
         mapState: {},
@@ -126,6 +129,9 @@ function initGameFromSave(save) {
             y: save.player.y,
             facing: 'down',
             walkFrame: 0,
+            _giftedBy: save.player.giftedBy || save.player._giftedBy || {},
+            _walletDropped: save.player.walletDropped || save.player._walletDropped || false,
+            _stepCount: 0,
         },
         currentMap: save.currentMap,
         mapState: save.mapState || {},
@@ -371,7 +377,21 @@ function movePlayer(dx, dy) {
         }
     }
 
-    if (!isWalkable(nx, ny)) return;
+    if (!isWalkable(nx, ny)) {
+        if (gameState.currentMap === 'elephant_house' && !gameState.player._walletDropped) {
+            const tile = map.tiles[ny * map.width + nx];
+            if (tile === TILE.WATER) {
+                gameState.player._walletDropped = true;
+                gameState.dialog = {
+                    speaker: '❗ 突发事件',
+                    text: '哎呀，钱包掉到水池里了，幸好钱放在口袋里，但是得把钱包找回来呀',
+                    onClose: null,
+                };
+                gameState.mode = 'dialog';
+            }
+        }
+        return;
+    }
     gameState.player.x = nx;
     gameState.player.y = ny;
     gameState.player.walkFrame = 1 - gameState.player.walkFrame;
@@ -382,9 +402,12 @@ function movePlayer(dx, dy) {
 
 function applyStepEffects() {
     const p = gameState.player;
+    p._stepCount = (p._stepCount || 0) + 1;
 
-    p.hunger = Math.max(0, p.hunger - 1);
-    p.thirst = Math.max(0, p.thirst - 2);
+    if (p._stepCount % 3 === 0) {
+        p.hunger = Math.max(0, p.hunger - 1);
+        p.thirst = Math.max(0, p.thirst - 2);
+    }
     p.hp = Math.min(p.maxHp, p.hp + 1);
 
     if (p.hunger <= 0) {
@@ -462,9 +485,20 @@ function buyItem(itemId, price) {
 function talkToNpc(npcId) {
     const npc = NPCS[npcId];
     const idx = Math.floor(Math.random() * npc.dialogs.length);
+    let text = npc.dialogs[idx];
+
+    if (npc.gift) {
+        if (!gameState.player._giftedBy) gameState.player._giftedBy = {};
+        if (!gameState.player._giftedBy[npcId]) {
+            gameState.player._giftedBy[npcId] = true;
+            gameState.player.gold += npc.gift;
+            text += '（' + npc.name + '给了你' + npc.gift + '元零花钱！）';
+        }
+    }
+
     gameState.dialog = {
         speaker: npc.emoji + ' ' + npc.name,
-        text: npc.dialogs[idx],
+        text: text,
         onClose: null,
     };
     gameState.mode = 'dialog';
@@ -1821,6 +1855,8 @@ function _buildSaveData() {
             str: p.str, agi: p.agi, wis: p.wis,
             inventory: p.inventory,
             x: p.x, y: p.y,
+            giftedBy: p._giftedBy || {},
+            walletDropped: p._walletDropped || false,
         },
         currentMap: gameState.currentMap,
         mapState: gameState.mapState,
