@@ -105,6 +105,7 @@ const ZooEngine = (() => {
         wang_ayi:       'npc',
         zhang_shushu:   'npc',
         li_nainai:      'mage',
+        banana_seller:  'npc',
     };
 
     // Walk sprite sheet layout (3 cols × 4 rows, each 16×16):

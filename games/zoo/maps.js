@@ -38,7 +38,7 @@ const MAPS = {
             T,G,G,W,L,L,L,L,L,L,L,W,G,G,G,T,
             T,G,G,W,L,L,L,L,L,L,L,W,G,G,G,T,
             T,G,G,W,W,W,W,D,W,W,W,W,G,G,G,T,
-            T,G,G,G,G,G,P,P,P,G,G,G,G,G,P,P,
+            T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
@@ -56,7 +56,6 @@ const MAPS = {
         ],
         exits: [
             { x: 7, y: 0, toMap: 'elephant_house', toX: 7, toY: 11, label: '→ 大象馆', requireTicket: true },
-            { x: 15, y: 7, toMap: 'bakery', toX: 4, toY: 6, label: '→ 面包店' },
         ],
         enterMsg: '你来到了动物园的售票处。一座小木屋坐落在入口旁。',
     },
@@ -87,6 +86,7 @@ const MAPS = {
             { id: 'vending_machine', x: 3, y: 6 },
             { id: 'ice_cream_cart', x: 12, y: 6 },
             { id: 'zhang_shushu', x: 12, y: 10 },
+            { id: 'banana_seller', x: 2, y: 5 },
         ],
         encounters: [],
         bosses: [
@@ -117,7 +117,7 @@ const MAPS = {
             T,G,G,G,G,G,G,P,G,G,G,G,G,G,G,T,
             T,G,G,T,G,G,G,P,G,G,G,T,G,G,G,T,
             T,G,G,G,G,G,G,P,G,G,G,G,G,G,G,T,
-            T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,
+            T,T,T,T,T,T,T,P,T,T,T,T,T,T,T,T,
         ],
         playerStart: { x: 1, y: 6 },
         npcs: [
@@ -131,6 +131,7 @@ const MAPS = {
         ],
         exits: [
             { x: 0, y: 6, toMap: 'elephant_house', toX: 14, toY: 7, label: '→ 大象馆' },
+            { x: 7, y: 13, toMap: 'bakery', toX: 4, toY: 6, label: '→ 面包店' },
         ],
         enterMsg: '百鸟园中鸟语花香，各种珍禽在枝头鸣唱。',
     },
@@ -157,7 +158,7 @@ const MAPS = {
         encounters: [],
         bosses: [],
         exits: [
-            { x: 4, y: 7, toMap: 'ticket_office', toX: 14, toY: 7, label: '→ 售票处' },
+            { x: 4, y: 7, toMap: 'bird_garden', toX: 7, toY: 12, label: '→ 百鸟园' },
         ],
         enterMsg: '面包店里飘来阵阵面包的香味，新鲜出炉的面包摆满了柜台。',
     },

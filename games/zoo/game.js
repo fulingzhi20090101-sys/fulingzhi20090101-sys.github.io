@@ -4,7 +4,7 @@ let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 let gameArea = { x: 0, y: 0, w: 0, h: 0 };
 
-const GAME_VERSION = 'v4.3';
+const GAME_VERSION = 'v4.4';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -22,6 +22,7 @@ const ITEMS = {
     redbean_bread:   { name: '红豆面包',   emoji: '🫘', type: 'food', hunger: 40, desc: '恢复40饥饿' },
     strawberry_bread:{ name: '草莓面包',   emoji: '🍓', type: 'food', hunger: 40, desc: '恢复40饥饿' },
     choco_bread:     { name: '巧克力面包', emoji: '🥐', type: 'food', hunger: 40, desc: '恢复40饥饿' },
+    banana:          { name: '香蕉',       emoji: '🍌', type: 'food', hunger: 20, desc: '恢复20饥饿' },
     old_wallet:      { name: '钱包',       emoji: '👛', type: 'quest', desc: '失而复得的钱包' },
     mysterious_paper:{ name: '神秘的纸',   emoji: '📜', type: 'quest', desc: '从钱包里发现的一张纸' },
 };
@@ -42,6 +43,10 @@ const BAKERY_STOCK = [
     { id: 'redbean_bread', price: 5 },
     { id: 'strawberry_bread', price: 5 },
     { id: 'choco_bread', price: 5 },
+];
+
+const BANANA_STOCK = [
+    { id: 'banana', price: 2 },
 ];
 
 const TICKET_STOCK = [
@@ -479,6 +484,10 @@ function interactWithNpc(npcId) {
         openShop('bakery');
         return;
     }
+    if (npcId === 'banana_seller') {
+        openShop('banana');
+        return;
+    }
     showNpcMenu('npc', npcId, null);
 }
 
@@ -493,6 +502,9 @@ function openShop(shopType) {
     } else if (shopType === 'bakery') {
         stock = BAKERY_STOCK;
         title = '🍞 面包店';
+    } else if (shopType === 'banana') {
+        stock = BANANA_STOCK;
+        title = '🍌 香蕉摊';
     } else if (shopType === 'ticket') {
         stock = TICKET_STOCK;
         title = '🎫 售票处';
@@ -554,9 +566,16 @@ function talkToElephant() {
             gameState.mode = 'dialog';
             showMessage('得到了失而复得的钱包和一张纸！', 4000);
         });
+    } else if (getItemQty('banana') > 0) {
+        gameState.dialog = {
+            speaker: '🐘 暴怒大象',
+            text: '香蕉，香蕉总是香蕉，世界上有比香蕉更好吃的东西。',
+            onClose: null,
+        };
+        gameState.mode = 'dialog';
     } else {
         p._elephantTalkCount = (p._elephantTalkCount || 0) + 1;
-        const text = p._elephantTalkCount <= 1 ? '好想吃抹茶面包呀！' : '水池中间有个东西亮晶晶的。';
+        const text = p._elephantTalkCount <= 1 ? '我有点饿了。' : '水池中间有个东西亮晶晶的。';
         gameState.dialog = {
             speaker: '🐘 暴怒大象',
             text: text,
