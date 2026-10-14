@@ -4,7 +4,7 @@ let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 let gameArea = { x: 0, y: 0, w: 0, h: 0 };
 
-const GAME_VERSION = 'v4.2';
+const GAME_VERSION = 'v4.3';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -18,6 +18,12 @@ const ITEMS = {
     chocolate:    { name: '巧克力', emoji: '🍫', type: 'food',  hunger: 40, desc: '恢复40饥饿' },
     ice_cream:    { name: '冰淇淋', emoji: '🍦', type: 'food',  thirst: 20, hunger: 20, desc: '+20口渴+20饥饿' },
     ticket:       { name: '门票',   emoji: '🎫', type: 'ticket', desc: '动物园门票' },
+    matcha_bread:    { name: '抹茶面包',   emoji: '🍃', type: 'food', hunger: 40, desc: '恢复40饥饿' },
+    redbean_bread:   { name: '红豆面包',   emoji: '🫘', type: 'food', hunger: 40, desc: '恢复40饥饿' },
+    strawberry_bread:{ name: '草莓面包',   emoji: '🍓', type: 'food', hunger: 40, desc: '恢复40饥饿' },
+    choco_bread:     { name: '巧克力面包', emoji: '🥐', type: 'food', hunger: 40, desc: '恢复40饥饿' },
+    old_wallet:      { name: '钱包',       emoji: '👛', type: 'quest', desc: '失而复得的钱包' },
+    mysterious_paper:{ name: '神秘的纸',   emoji: '📜', type: 'quest', desc: '从钱包里发现的一张纸' },
 };
 
 const VENDING_STOCK = [
@@ -29,6 +35,13 @@ const VENDING_STOCK = [
 
 const ICE_CREAM_STOCK = [
     { id: 'ice_cream', price: 5 },
+];
+
+const BAKERY_STOCK = [
+    { id: 'matcha_bread', price: 5 },
+    { id: 'redbean_bread', price: 5 },
+    { id: 'strawberry_bread', price: 5 },
+    { id: 'choco_bread', price: 5 },
 ];
 
 const TICKET_STOCK = [
@@ -78,6 +91,8 @@ function initGame(playerName, playerEmoji) {
             walkFrame: 0,
             _giftedBy: {},
             _walletDropped: false,
+            _walletRecovered: false,
+            _elephantTalkCount: 0,
             _stepCount: 0,
         },
         currentMap: null,
@@ -131,6 +146,8 @@ function initGameFromSave(save) {
             walkFrame: 0,
             _giftedBy: save.player.giftedBy || save.player._giftedBy || {},
             _walletDropped: save.player.walletDropped || save.player._walletDropped || false,
+            _walletRecovered: save.player.walletRecovered || false,
+            _elephantTalkCount: save.player.elephantTalkCount || 0,
             _stepCount: 0,
         },
         currentMap: save.currentMap,
@@ -378,16 +395,26 @@ function movePlayer(dx, dy) {
     }
 
     if (!isWalkable(nx, ny)) {
-        if (gameState.currentMap === 'elephant_house' && !gameState.player._walletDropped) {
+        if (gameState.currentMap === 'elephant_house') {
             const tile = map.tiles[ny * map.width + nx];
             if (tile === TILE.WATER) {
-                gameState.player._walletDropped = true;
-                gameState.dialog = {
-                    speaker: '❗ 突发事件',
-                    text: '哎呀，钱包掉到水池里了，幸好钱放在口袋里，但是得把钱包找回来呀',
-                    onClose: null,
-                };
-                gameState.mode = 'dialog';
+                const p = gameState.player;
+                if (!p._walletDropped) {
+                    p._walletDropped = true;
+                    gameState.dialog = {
+                        speaker: '❗ 突发事件',
+                        text: '哎呀，钱包掉到水池里了，幸好钱放在口袋里，但是得把钱包找回来呀',
+                        onClose: null,
+                    };
+                    gameState.mode = 'dialog';
+                } else if (!p._walletRecovered) {
+                    gameState.dialog = {
+                        speaker: '❗ 提示',
+                        text: '钱包在水池中央，我够不到呀，要是有大象的长鼻子就好了',
+                        onClose: null,
+                    };
+                    gameState.mode = 'dialog';
+                }
             }
         }
         return;
@@ -448,6 +475,10 @@ function interactWithNpc(npcId) {
         openShop('ice_cream');
         return;
     }
+    if (npcId === 'baker') {
+        openShop('bakery');
+        return;
+    }
     showNpcMenu('npc', npcId, null);
 }
 
@@ -459,6 +490,9 @@ function openShop(shopType) {
     } else if (shopType === 'ice_cream') {
         stock = ICE_CREAM_STOCK;
         title = '🍦 冰淇淋车';
+    } else if (shopType === 'bakery') {
+        stock = BAKERY_STOCK;
+        title = '🍞 面包店';
     } else if (shopType === 'ticket') {
         stock = TICKET_STOCK;
         title = '🎫 售票处';
@@ -504,6 +538,34 @@ function talkToNpc(npcId) {
     gameState.mode = 'dialog';
 }
 
+function talkToElephant() {
+    const p = gameState.player;
+    if (getItemQty('matcha_bread') > 0) {
+        showConfirm('🐘 暴怒大象', '你的抹茶面包可以给我吃吗？', () => {
+            removeItem('matcha_bread', 1);
+            p._walletRecovered = true;
+            addItem('old_wallet', 1);
+            addItem('mysterious_paper', 1);
+            gameState.dialog = {
+                speaker: '🐘 暴怒大象',
+                text: '谢谢你！我在水池里捡到这个亮晶晶的东西送给你吧。',
+                onClose: null,
+            };
+            gameState.mode = 'dialog';
+            showMessage('得到了失而复得的钱包和一张纸！', 4000);
+        });
+    } else {
+        p._elephantTalkCount = (p._elephantTalkCount || 0) + 1;
+        const text = p._elephantTalkCount <= 1 ? '好想吃抹茶面包呀！' : '水池中间有个东西亮晶晶的。';
+        gameState.dialog = {
+            speaker: '🐘 暴怒大象',
+            text: text,
+            onClose: null,
+        };
+        gameState.mode = 'dialog';
+    }
+}
+
 function showNpcMenu(type, id, bossRef) {
     gameState.npcMenu = { type, id, bossRef };
     gameState.mode = 'npc_menu';
@@ -518,8 +580,11 @@ function handleNpcMenuAction(action) {
     if (!menu) return;
 
     if (action === 'talk') {
+        gameState.npcMenu = null;
         if (menu.type === 'npc') {
             talkToNpc(menu.id);
+        } else if (menu.id === 'angry_elephant' && gameState.player._walletDropped && !gameState.player._walletRecovered) {
+            talkToElephant();
         } else {
             const mon = MONSTERS[menu.id];
             gameState.dialog = {
@@ -529,7 +594,6 @@ function handleNpcMenuAction(action) {
             };
             gameState.mode = 'dialog';
         }
-        gameState.npcMenu = null;
     } else if (action === 'view') {
         if (menu.type === 'npc') {
             const npc = NPCS[menu.id];
@@ -668,10 +732,14 @@ function handleConfirmClick(cx, cy) {
     for (const btn of confirmButtons) {
         if (cx >= btn.x && cx <= btn.x + btn.w && cy >= btn.y && cy <= btn.y + btn.h) {
             if (btn.action === 'yes' && gameState.confirm && gameState.confirm.onYes) {
-                gameState.confirm.onYes();
+                const callback = gameState.confirm.onYes;
+                gameState.confirm = null;
+                callback();
+                if (gameState.mode === 'confirm') gameState.mode = 'explore';
+            } else {
+                gameState.confirm = null;
+                gameState.mode = 'explore';
             }
-            gameState.confirm = null;
-            gameState.mode = 'explore';
             return;
         }
     }
@@ -1392,13 +1460,14 @@ function renderInventory() {
     const iw = boxW - 24;
     const maxItems = Math.floor((boxH - 100) / (itemH + gap));
 
-    if (p.inventory.length === 0) {
+    const displayItems = p.inventory.filter(s => { const d = ITEMS[s.id]; return d && d.type !== 'ticket'; });
+    if (displayItems.length === 0) {
         ctx.fillStyle = '#888';
         ctx.font = '14px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('背包是空的', boxX + boxW / 2, startY + 40);
     } else {
-        p.inventory.forEach((slot, i) => {
+        displayItems.forEach((slot, i) => {
             if (i >= maxItems) return;
             const def = ITEMS[slot.id];
             if (!def) return;
@@ -1857,6 +1926,8 @@ function _buildSaveData() {
             x: p.x, y: p.y,
             giftedBy: p._giftedBy || {},
             walletDropped: p._walletDropped || false,
+            walletRecovered: p._walletRecovered || false,
+            elephantTalkCount: p._elephantTalkCount || 0,
         },
         currentMap: gameState.currentMap,
         mapState: gameState.mapState,

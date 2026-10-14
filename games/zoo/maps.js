@@ -38,7 +38,7 @@ const MAPS = {
             T,G,G,W,L,L,L,L,L,L,L,W,G,G,G,T,
             T,G,G,W,L,L,L,L,L,L,L,W,G,G,G,T,
             T,G,G,W,W,W,W,D,W,W,W,W,G,G,G,T,
-            T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
+            T,G,G,G,G,G,P,P,P,G,G,G,G,G,P,P,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
             T,G,G,G,G,G,P,P,P,G,G,G,G,G,G,T,
@@ -56,6 +56,7 @@ const MAPS = {
         ],
         exits: [
             { x: 7, y: 0, toMap: 'elephant_house', toX: 7, toY: 11, label: '→ 大象馆', requireTicket: true },
+            { x: 15, y: 7, toMap: 'bakery', toX: 4, toY: 6, label: '→ 面包店' },
         ],
         enterMsg: '你来到了动物园的售票处。一座小木屋坐落在入口旁。',
     },
@@ -132,5 +133,32 @@ const MAPS = {
             { x: 0, y: 6, toMap: 'elephant_house', toX: 14, toY: 7, label: '→ 大象馆' },
         ],
         enterMsg: '百鸟园中鸟语花香，各种珍禽在枝头鸣唱。',
+    },
+
+    bakery: {
+        name: '面包店',
+        width: 10,
+        height: 8,
+        tiles: [
+            W,W,W,W,W,W,W,W,W,W,
+            W,L,L,L,L,L,L,L,L,W,
+            W,L,L,L,L,L,L,L,L,W,
+            W,L,L,L,L,L,L,L,L,W,
+            W,L,L,L,L,L,L,L,L,W,
+            W,L,L,L,L,L,L,L,L,W,
+            W,L,L,L,L,L,L,L,L,W,
+            W,W,W,W,D,W,W,W,W,W,
+        ],
+        edgeTile: 48,
+        playerStart: { x: 4, y: 6 },
+        npcs: [
+            { id: 'baker', x: 5, y: 2 },
+        ],
+        encounters: [],
+        bosses: [],
+        exits: [
+            { x: 4, y: 7, toMap: 'ticket_office', toX: 14, toY: 7, label: '→ 售票处' },
+        ],
+        enterMsg: '面包店里飘来阵阵面包的香味，新鲜出炉的面包摆满了柜台。',
     },
 };

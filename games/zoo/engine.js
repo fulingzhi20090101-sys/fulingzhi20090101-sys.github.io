@@ -101,6 +101,7 @@ const ZooEngine = (() => {
         parrot:         'monster_bat',
         peacock:        'monster_bat',
         phoenix:        'monster_boss',
+        baker:          'npc',
         wang_ayi:       'npc',
         zhang_shushu:   'npc',
         li_nainai:      'mage',
