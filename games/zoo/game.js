@@ -4,7 +4,7 @@ let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 let gameArea = { x: 0, y: 0, w: 0, h: 0 };
 
-const GAME_VERSION = 'v4.4';
+const GAME_VERSION = 'v4.5';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -23,8 +23,10 @@ const ITEMS = {
     strawberry_bread:{ name: '草莓面包',   emoji: '🍓', type: 'food', hunger: 40, desc: '恢复40饥饿' },
     choco_bread:     { name: '巧克力面包', emoji: '🥐', type: 'food', hunger: 40, desc: '恢复40饥饿' },
     banana:          { name: '香蕉',       emoji: '🍌', type: 'food', hunger: 20, desc: '恢复20饥饿' },
-    old_wallet:      { name: '钱包',       emoji: '👛', type: 'quest', desc: '失而复得的钱包' },
-    mysterious_paper:{ name: '神秘的纸',   emoji: '📜', type: 'quest', desc: '从钱包里发现的一张纸' },
+    wallet:          { name: '钱包',       emoji: '👛', type: 'quest', desc: '我的钱包' },
+    old_wallet:      { name: '失而复得的钱包', emoji: '👛', type: 'quest', desc: '失而复得的钱包' },
+    mysterious_paper:{ name: '一张奇怪的纸', emoji: '📜', type: 'quest', desc: '从钱包里发现的一张奇怪的纸' },
+    copper_coin:     { name: '铜钱',       emoji: '🪙', type: 'quest', desc: '王胖子送的一枚铜钱' },
 };
 
 const VENDING_STOCK = [
@@ -85,6 +87,7 @@ function initGame(playerName, playerEmoji) {
                 { id: 'bread', qty: 1 },
                 { id: 'sausage', qty: 1 },
                 { id: 'water', qty: 1 },
+                { id: 'wallet', qty: 1 },
             ],
             skills: [
                 { name: '猛击', cost: 10, dmg: 20, desc: '用力攻击' },
@@ -98,6 +101,8 @@ function initGame(playerName, playerEmoji) {
             _walletDropped: false,
             _walletRecovered: false,
             _elephantTalkCount: 0,
+            _stampQuestDone: false,
+            _rescueCount: 0,
             _stepCount: 0,
         },
         currentMap: null,
@@ -153,6 +158,8 @@ function initGameFromSave(save) {
             _walletDropped: save.player.walletDropped || save.player._walletDropped || false,
             _walletRecovered: save.player.walletRecovered || false,
             _elephantTalkCount: save.player.elephantTalkCount || 0,
+            _stampQuestDone: save.player.stampQuestDone || false,
+            _rescueCount: 0,
             _stepCount: 0,
         },
         currentMap: save.currentMap,
@@ -339,14 +346,52 @@ function useItem(itemId) {
 
 // --- MOVEMENT ---
 
+function triggerRescue(isHungry) {
+    const p = gameState.player;
+    if (p._rescueCount === 0) {
+        p._rescueCount = 1;
+        addItem('bread', 1);
+        addItem('water', 1);
+        const msg = isHungry ? '你饿得走不动了' : '你渴得走不动了';
+        gameState.dialog = {
+            speaker: '❗ 突发事件',
+            text: msg + '，幸亏有好心人送给你一个面包和一瓶水。',
+            onClose: null,
+        };
+        gameState.mode = 'dialog';
+        showMessage('得到了一个面包和一瓶水！', 3000);
+    } else {
+        gameState.dialog = {
+            speaker: '📱 电话',
+            text: '只好给爸爸打电话，让爸爸来接我了。',
+            onClose: () => {
+                gameState.dialog = {
+                    speaker: '🏠 结局：提前回家',
+                    text: '你的动物园冒险到此结束了...',
+                    onClose: () => {
+                        try { localStorage.removeItem(SAVE_LOCAL_KEY); } catch(e) {}
+                        location.reload();
+                    },
+                };
+                gameState.mode = 'dialog';
+            },
+        };
+        gameState.mode = 'dialog';
+    }
+}
+
 function movePlayer(dx, dy) {
     if (gameState.mode !== 'explore') return;
     const p = gameState.player;
     if (p.hunger <= 0) {
+        const canEat = p.inventory.some(s => { const d = ITEMS[s.id]; return d && d.hunger > 0; });
+        if (!canEat) { triggerRescue(true); return; }
         showMessage('😫 你太饿了，无法移动！打开背包吃点东西吧', 2000);
         return;
     }
     if (p.thirst <= 0) {
+        const canDrink = p.inventory.some(s => { const d = ITEMS[s.id]; return d && d.thirst > 0; });
+        if (!canDrink) { triggerRescue(false); return; }
         showMessage('😫 你太渴了，无法移动！打开背包喝点水吧', 2000);
         return;
     }
@@ -406,6 +451,7 @@ function movePlayer(dx, dy) {
                 const p = gameState.player;
                 if (!p._walletDropped) {
                     p._walletDropped = true;
+                    removeItem('wallet', 1);
                     gameState.dialog = {
                         speaker: '❗ 突发事件',
                         text: '哎呀，钱包掉到水池里了，幸好钱放在口袋里，但是得把钱包找回来呀',
@@ -530,6 +576,27 @@ function buyItem(itemId, price) {
 
 function talkToNpc(npcId) {
     const npc = NPCS[npcId];
+
+    if (npcId === 'wang_pangzi') {
+        if (getItemQty('mysterious_paper') > 0) {
+            removeItem('mysterious_paper', 1);
+            addItem('copper_coin', 1);
+            gameState.player._stampQuestDone = true;
+            gameState.dialog = {
+                speaker: npc.emoji + ' ' + npc.name,
+                text: '这就是我丢的龙票！谢谢你把它找回来！这枚铜钱送给你，当做感谢吧。',
+                onClose: null,
+            };
+            gameState.mode = 'dialog';
+            showMessage('奇怪的纸没有了，得到了一枚铜钱！', 4000);
+        } else {
+            const text = gameState.player._stampQuestDone ? '谢谢你帮我找回了龙票！' : '糟糕，我的邮票丢了。';
+            gameState.dialog = { speaker: npc.emoji + ' ' + npc.name, text: text, onClose: null };
+            gameState.mode = 'dialog';
+        }
+        return;
+    }
+
     const idx = Math.floor(Math.random() * npc.dialogs.length);
     let text = npc.dialogs[idx];
 
@@ -799,8 +866,10 @@ function handleCanvasClick(cx, cy) {
         handleConfirmClick(cx, cy);
     } else if (gameState.mode === 'dialog') {
         if (Date.now() - _npcMenuActionTime < 400) return;
-        gameState.mode = 'explore';
+        const onClose = gameState.dialog && gameState.dialog.onClose;
         gameState.dialog = null;
+        if (onClose) onClose();
+        else gameState.mode = 'explore';
     } else if (gameState.mode === 'explore') {
         if (isMenuButtonHit(cx, cy)) {
             _menuOpenTime = Date.now();
@@ -966,8 +1035,10 @@ function setupInput() {
         keysDown[e.key] = true;
         if (gameState.mode === 'dialog') {
             if (e.key === 'Enter' || e.key === ' ') {
-                gameState.mode = 'explore';
+                const onClose = gameState.dialog && gameState.dialog.onClose;
                 gameState.dialog = null;
+                if (onClose) onClose();
+                else gameState.mode = 'explore';
             }
             return;
         }
@@ -1283,6 +1354,23 @@ function renderHUD() {
         ctx.font = '10px sans-serif';
         ctx.fillText('🎫×' + tickets, pad + 8, pad + 80);
     }
+
+    // Scene name at top center
+    const sceneName = getMap().name;
+    ctx.font = 'bold 15px sans-serif';
+    const sceneTextW = ctx.measureText(sceneName).width;
+    const sceneBgW = sceneTextW + 24;
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.6)';
+    ctx.fillRect((canvas.width - sceneBgW) / 2, 4, sceneBgW, 24);
+    if (pal) {
+        ctx.strokeStyle = pal.uiBorder;
+        ctx.lineWidth = 1;
+        ctx.strokeRect((canvas.width - sceneBgW) / 2, 4, sceneBgW, 24);
+    }
+    ctx.fillStyle = pal ? pal.accent : '#f1c40f';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(sceneName, canvas.width / 2, 16);
 }
 
 function renderMenuButton() {
@@ -1947,6 +2035,7 @@ function _buildSaveData() {
             walletDropped: p._walletDropped || false,
             walletRecovered: p._walletRecovered || false,
             elephantTalkCount: p._elephantTalkCount || 0,
+            stampQuestDone: p._stampQuestDone || false,
         },
         currentMap: gameState.currentMap,
         mapState: gameState.mapState,

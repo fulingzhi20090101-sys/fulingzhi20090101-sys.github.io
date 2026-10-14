@@ -124,6 +124,7 @@ const MAPS = {
             { id: 'bird_keeper', x: 7, y: 7 },
             { id: 'vending_machine', x: 11, y: 4 },
             { id: 'li_nainai', x: 3, y: 4 },
+            { id: 'wang_pangzi', x: 2, y: 11 },
         ],
         encounters: [],
         bosses: [
