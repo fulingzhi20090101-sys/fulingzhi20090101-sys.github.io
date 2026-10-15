@@ -24,13 +24,6 @@
         .vip-avatar { font-size: 2.5rem; margin-bottom: 6px; }
         .vip-name { font-size: 1rem; font-weight: bold; }
 
-        .zoo-link { display: block; margin-top: 15px; padding: 18px; background: linear-gradient(135deg, #1a1a2e, #302b63); border-radius: 14px; text-decoration: none; color: #f1c40f; font-size: 1.2rem; font-weight: bold; transition: all 0.3s; }
-        .zoo-link:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(48,43,99,0.4); }
-
-        .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
-        .menu-item { padding: 14px; background: #fff; border: 2px solid #ecf0f1; border-radius: 12px; text-decoration: none; color: var(--primary-color); font-weight: bold; transition: all 0.3s ease; cursor: pointer; font-size: 0.95rem; }
-        .menu-item:hover { background: var(--accent-color); color: white; border-color: var(--accent-color); transform: translateY(-3px); }
-
         .footer { margin-top: 30px; font-size: 0.8rem; color: #bdc3c7; }
     </style>
 </head>
@@ -55,31 +48,12 @@
             </a>
         </div>
 
-        <a href="games/zoo/index.html" class="zoo-link">🦁 动物园历险记</a>
-
-        <div class="menu">
-            <a href="games/xiaobawang/index.html" class="menu-item">🎮 小霸王游戏</a>
-            <div class="menu-item" onclick="accessPrivateVideo()">🎬 内部视频</div>
-        </div>
-
         <div class="footer">
             © 2026 Laofujia.com · 基于 GitHub Pages 驱动
         </div>
     </div>
 
     <script>
-        function accessPrivateVideo() {
-            const webPassword = "laofujia6301";
-            const videoUrl = "https://www.alipan.com/s/asoCYe5H2KZ";
-            const userInput = prompt("请输入老付家专属访问暗号：");
-            if (userInput === webPassword) {
-                alert("验证通过！即将前往阿里云盘。请使用提取码观看。");
-                window.open(videoUrl, '_blank');
-            } else if (userInput !== null) {
-                alert("暗号错误，请联系老付获取！");
-            }
-        }
-
         const API = 'https://laofujia-api.laofujia-worker.workers.dev';
         ['zy26', 'george', 'jerry'].forEach(uid => {
             fetch(API + '/api/avatar/' + uid).then(r => r.json()).then(data => {

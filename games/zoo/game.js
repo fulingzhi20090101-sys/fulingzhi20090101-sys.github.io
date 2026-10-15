@@ -4,7 +4,7 @@ let gameState = null;
 let camX = 0, camY = 0, camReady = false;
 let gameArea = { x: 0, y: 0, w: 0, h: 0 };
 
-const GAME_VERSION = 'v4.5';
+const GAME_VERSION = 'v4.6';
 const SAVE_API = 'https://laofujia-api.laofujia-worker.workers.dev/api/gamesave/jerry';
 const SAVE_LOCAL_KEY = 'zoo_save_jerry';
 
@@ -102,6 +102,7 @@ function initGame(playerName, playerEmoji) {
             _walletRecovered: false,
             _elephantTalkCount: 0,
             _stampQuestDone: false,
+            _zookeeperTalked: false,
             _rescueCount: 0,
             _stepCount: 0,
         },
@@ -159,6 +160,7 @@ function initGameFromSave(save) {
             _walletRecovered: save.player.walletRecovered || false,
             _elephantTalkCount: save.player.elephantTalkCount || 0,
             _stampQuestDone: save.player.stampQuestDone || false,
+            _zookeeperTalked: save.player.zookeeperTalked || false,
             _rescueCount: 0,
             _stepCount: 0,
         },
@@ -237,6 +239,9 @@ function loadMap(mapId, toX, toY) {
         gameState.mapState[mapId] = {
             bosses: map.bosses ? map.bosses.map(b => ({ ...b })) : [],
         };
+    }
+    if (map.movingNpcs && !gameState.mapState[mapId].movingNpcs) {
+        gameState.mapState[mapId].movingNpcs = map.movingNpcs.map(n => ({ ...n }));
     }
     if (toX !== undefined) {
         gameState.player.x = toX;
@@ -418,6 +423,22 @@ function movePlayer(dx, dy) {
     }
 
     const ms = gameState.mapState[gameState.currentMap];
+    if (ms.movingNpcs) {
+        for (const mn of ms.movingNpcs) {
+            if (mn.x === nx && mn.y === ny) {
+                const npc = NPCS[mn.id];
+                if (npc) {
+                    gameState.dialog = {
+                        speaker: npc.emoji + ' ' + npc.name,
+                        text: npc.dialogs[0],
+                        onClose: null,
+                    };
+                    gameState.mode = 'dialog';
+                }
+                return;
+            }
+        }
+    }
     if (ms.bosses) {
         for (const b of ms.bosses) {
             if (!b.defeated && b.x === nx && b.y === ny) {
@@ -476,6 +497,51 @@ function movePlayer(dx, dy) {
     gameState.player._lastMoveTime = Date.now();
 
     applyStepEffects();
+    moveMovingNpcs();
+}
+
+function moveMovingNpcs() {
+    const ms = gameState.mapState[gameState.currentMap];
+    if (!ms.movingNpcs) return;
+    const map = getMap();
+    for (const npc of ms.movingNpcs) {
+        if (Math.random() < 0.3) continue;
+        const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 }];
+        for (let i = dirs.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+        }
+        let moved = false;
+        for (const d of dirs) {
+            const nx = npc.x + d.dx;
+            const ny = npc.y + d.dy;
+            if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height) continue;
+            const tile = map.tiles[ny * map.width + nx];
+            if (tile === TILE.WALL || tile === TILE.TREE || tile === TILE.FENCE || tile === TILE.WATER || tile === TILE.EMPTY) continue;
+            if (gameState.player.x === nx && gameState.player.y === ny) continue;
+            let blocked = false;
+            if (map.npcs) {
+                for (const sn of map.npcs) {
+                    if (sn.x === nx && sn.y === ny) { blocked = true; break; }
+                }
+            }
+            if (blocked) continue;
+            for (const other of ms.movingNpcs) {
+                if (other !== npc && other.x === nx && other.y === ny) { blocked = true; break; }
+            }
+            if (blocked) continue;
+            if (ms.bosses) {
+                for (const b of ms.bosses) {
+                    if (!b.defeated && b.x === nx && b.y === ny) { blocked = true; break; }
+                }
+            }
+            if (blocked) continue;
+            npc.x = nx;
+            npc.y = ny;
+            moved = true;
+            break;
+        }
+    }
 }
 
 function applyStepEffects() {
@@ -597,8 +663,14 @@ function talkToNpc(npcId) {
         return;
     }
 
-    const idx = Math.floor(Math.random() * npc.dialogs.length);
-    let text = npc.dialogs[idx];
+    let text;
+    if (npcId === 'zookeeper' && !gameState.player._zookeeperTalked) {
+        gameState.player._zookeeperTalked = true;
+        text = '听说大象最爱吃抹茶面包，面包店就在百鸟园南边。';
+    } else {
+        const idx = Math.floor(Math.random() * npc.dialogs.length);
+        text = npc.dialogs[idx];
+    }
 
     if (npc.gift) {
         if (!gameState.player._giftedBy) gameState.player._giftedBy = {};
@@ -631,7 +703,7 @@ function talkToElephant() {
                 onClose: null,
             };
             gameState.mode = 'dialog';
-            showMessage('得到了失而复得的钱包和一张纸！', 4000);
+            showMessage('得到 失而复得的钱包和一张奇怪的纸', 4000);
         });
     } else if (getItemQty('banana') > 0) {
         gameState.dialog = {
@@ -1252,6 +1324,18 @@ function renderMap() {
     }
 
     const ms = gameState.mapState[gameState.currentMap];
+    if (ms.movingNpcs) {
+        for (const mn of ms.movingNpcs) {
+            const npc = NPCS[mn.id];
+            if (!npc) continue;
+            const sx = offsetX + mn.x * ts;
+            const sy = offsetY + mn.y * ts;
+            ctx.font = (ts * 0.7) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(npc.emoji, sx + ts / 2, sy + ts / 2);
+        }
+    }
     if (ms.bosses) {
         for (const b of ms.bosses) {
             if (b.defeated) continue;
@@ -1294,6 +1378,14 @@ function renderHUD() {
     const w = 220, h = 92;
     const pal = PALETTES[currentTheme];
 
+    const ts = getTileSize();
+    const map = getMap();
+    const mw = map.width * ts, mh = map.height * ts;
+    const ox = canvas.width > mw ? Math.floor((canvas.width - mw) / 2) : 0;
+    const oy = canvas.height > mh ? Math.floor((canvas.height - mh) / 2) : 0;
+    ctx.save();
+    ctx.translate(ox, oy);
+
     ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.75)';
     ctx.fillRect(pad, pad, w, h);
     if (pal) {
@@ -1312,7 +1404,6 @@ function renderHUD() {
     const barW = 80;
     const barH = 10;
 
-    // HP
     ctx.fillStyle = '#555';
     ctx.fillRect(barX, pad + 24, barW, barH);
     ctx.fillStyle = pal ? pal.hpBar : '#2ecc71';
@@ -1321,7 +1412,6 @@ function renderHUD() {
     ctx.font = '10px sans-serif';
     ctx.fillText('❤️' + p.hp + '/' + p.maxHp, barX + barW + 4, pad + 24);
 
-    // Hunger
     const hungerColor = p.hunger < 30 ? '#e74c3c' : '#e67e22';
     ctx.fillStyle = '#555';
     ctx.fillRect(barX, pad + 38, barW, barH);
@@ -1330,7 +1420,6 @@ function renderHUD() {
     ctx.fillStyle = p.hunger < 30 ? '#e74c3c' : (pal ? pal.text : '#fff');
     ctx.fillText('🍖' + Math.floor(p.hunger), barX + barW + 4, pad + 38);
 
-    // Thirst
     const thirstColor = p.thirst < 30 ? '#e74c3c' : '#2980b9';
     ctx.fillStyle = '#555';
     ctx.fillRect(barX, pad + 52, barW, barH);
@@ -1339,15 +1428,13 @@ function renderHUD() {
     ctx.fillStyle = p.thirst < 30 ? '#e74c3c' : (pal ? pal.text : '#fff');
     ctx.fillText('💧' + Math.floor(p.thirst), barX + barW + 4, pad + 52);
 
-    // Gold + version
     ctx.fillStyle = pal ? pal.accent : '#f1c40f';
     ctx.font = '12px sans-serif';
     ctx.fillText('💰' + p.gold + '元', pad + 8, pad + 68);
     ctx.fillStyle = pal ? pal.mid : '#666';
     ctx.font = '10px sans-serif';
-    ctx.fillText(GAME_VERSION + ' · ' + getMap().name, pad + 80, pad + 70);
+    ctx.fillText(GAME_VERSION + ' · ' + map.name, pad + 80, pad + 70);
 
-    // Ticket count if any
     const tickets = getItemQty('ticket');
     if (tickets > 0) {
         ctx.fillStyle = '#fff';
@@ -1355,8 +1442,9 @@ function renderHUD() {
         ctx.fillText('🎫×' + tickets, pad + 8, pad + 80);
     }
 
-    // Scene name at top center
-    const sceneName = getMap().name;
+    ctx.restore();
+
+    const sceneName = map.name;
     ctx.font = 'bold 15px sans-serif';
     const sceneTextW = ctx.measureText(sceneName).width;
     const sceneBgW = sceneTextW + 24;
@@ -1832,49 +1920,55 @@ function renderNpcMenu() {
 
 function renderDialog() {
     const d = gameState.dialog;
-    const pad = 12;
-    const h = 120;
-    const y = canvas.height - h - pad;
     const pal = PALETTES[currentTheme];
 
-    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.9)';
-    ctx.fillRect(pad, y, canvas.width - pad * 2, h);
-    ctx.strokeStyle = pal ? pal.uiBorder : '#fff';
-    ctx.lineWidth = pal ? 2 : 1;
-    ctx.strokeRect(pad, y, canvas.width - pad * 2, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const boxW = Math.min(420, canvas.width - 40);
+    const boxH = 200;
+    const boxX = (canvas.width - boxW) / 2;
+    const boxY = (canvas.height - boxH) / 2;
+
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.92)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = pal ? pal.uiBorder : '#f1c40f';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
 
     ctx.fillStyle = pal ? pal.accent : '#f1c40f';
-    ctx.font = 'bold 16px sans-serif';
+    ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(d.speaker, pad + 12, y + 10);
+    ctx.fillText(d.speaker, boxX + 16, boxY + 16);
 
     ctx.fillStyle = pal ? pal.text : '#fff';
-    ctx.font = '16px sans-serif';
-    wrapText(d.text, pad + 12, y + 36, canvas.width - pad * 2 - 24, 22);
+    ctx.font = '18px sans-serif';
+    wrapText(d.text, boxX + 16, boxY + 52, boxW - 32, 28);
 
     ctx.fillStyle = pal ? pal.mid : '#999';
     ctx.font = '13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('点击继续', canvas.width - pad - 12, y + h - 20);
+    ctx.fillText('按空格/点击继续', boxX + boxW - 16, boxY + boxH - 22);
 }
 
 function renderMessage() {
     const pal = PALETTES[currentTheme];
-    ctx.font = '15px sans-serif';
+    ctx.font = 'bold 18px sans-serif';
     const tw = ctx.measureText(gameState.message).width;
-    const w = Math.min(tw + 40, canvas.width - 40);
-    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.85)';
-    ctx.fillRect((canvas.width - w) / 2, canvas.height - 60, w, 36);
+    const w = Math.min(tw + 48, canvas.width - 40);
+    const msgY = Math.floor(canvas.height * 0.65);
+    ctx.fillStyle = pal ? pal.uiBg : 'rgba(0,0,0,0.88)';
+    ctx.fillRect((canvas.width - w) / 2, msgY, w, 42);
     if (pal) {
         ctx.strokeStyle = pal.uiBorder;
         ctx.lineWidth = 1;
-        ctx.strokeRect((canvas.width - w) / 2, canvas.height - 60, w, 36);
+        ctx.strokeRect((canvas.width - w) / 2, msgY, w, 42);
     }
     ctx.fillStyle = pal ? pal.text : '#fff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(gameState.message, canvas.width / 2, canvas.height - 42);
+    ctx.fillText(gameState.message, canvas.width / 2, msgY + 21);
 }
 
 function wrapText(text, x, y, maxWidth, lineHeight) {
@@ -2036,6 +2130,7 @@ function _buildSaveData() {
             walletRecovered: p._walletRecovered || false,
             elephantTalkCount: p._elephantTalkCount || 0,
             stampQuestDone: p._stampQuestDone || false,
+            zookeeperTalked: p._zookeeperTalked || false,
         },
         currentMap: gameState.currentMap,
         mapState: gameState.mapState,

@@ -134,6 +134,9 @@ const MAPS = {
             { x: 0, y: 6, toMap: 'elephant_house', toX: 14, toY: 7, label: '→ 大象馆' },
             { x: 7, y: 13, toMap: 'bakery', toX: 4, toY: 6, label: '→ 面包店' },
         ],
+        movingNpcs: [
+            { id: 'flamingo', x: 10, y: 3 },
+        ],
         enterMsg: '百鸟园中鸟语花香，各种珍禽在枝头鸣唱。',
     },
 
