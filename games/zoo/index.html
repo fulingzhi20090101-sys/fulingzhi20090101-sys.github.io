@@ -67,7 +67,7 @@
         <div class="title-sub" id="titleSub">加载中...</div>
 
         <div id="menuScreen" style="display:none;text-align:center;width:90%;max-width:400px">
-            <div class="theme-row" id="themeRow">
+            <div class="theme-row" id="themeRow" style="display:none">
                 <button class="theme-btn selected" data-theme="classic" onclick="selectTheme('classic')"><span class="t-icon">🎭</span><span class="t-name">经典</span></button>
                 <button class="theme-btn" data-theme="retro" onclick="selectTheme('retro')"><span class="t-icon">📟</span><span class="t-name">怀旧</span></button>
                 <button class="theme-btn" data-theme="pixel" onclick="selectTheme('pixel')"><span class="t-icon">🎮</span><span class="t-name">像素</span></button>
@@ -108,11 +108,11 @@
         </div>
     </div>
 
-    <script src="engine.js?v=22"></script>
-    <script src="themes.js?v=22"></script>
-    <script src="characters.js?v=22"></script>
-    <script src="maps.js?v=22"></script>
-    <script src="game.js?v=22"></script>
+    <script src="engine.js?v=23"></script>
+    <script src="themes.js?v=23"></script>
+    <script src="characters.js?v=23"></script>
+    <script src="maps.js?v=23"></script>
+    <script src="game.js?v=23"></script>
     <script>
         const AVATARS = ['🧒','👦','👧','👨','👩','🧓','👴','👵','🐶','🐱','🐰','🐼','🐨','🦊','🐯','🦁','🐮','🐷','🐵','🐸','🐲','🦄','🐧','🐺'];
         let selectedAvatar = null;
@@ -127,15 +127,7 @@
         }
 
         function loadTheme() {
-            try {
-                const t = localStorage.getItem('zoo_theme');
-                if (t && THEME_INFO[t]) {
-                    currentTheme = t;
-                    document.querySelectorAll('.theme-btn').forEach(b => {
-                        b.classList.toggle('selected', b.dataset.theme === t);
-                    });
-                }
-            } catch(e) {}
+            currentTheme = 'classic';
         }
 
         function initTitle() {

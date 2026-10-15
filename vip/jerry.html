@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jerry 管理面板 | 老付家</title>
+    <title>Jerry 的专属空间 | 老付家</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --gold: #f1c40f; --bg: #f8f9fa; }
         body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--primary); margin: 0; min-height: 100vh; padding: 20px 0; }
@@ -19,27 +19,36 @@
         .avatar-picker span:hover { background: #fef9e7; transform: scale(1.15); }
         .avatar-picker span.selected { background: #fef9e7; border: 2px solid var(--gold); }
         .avatar-hint { color: #95a5a6; font-size: 0.75rem; margin-top: 6px; }
+        .currency-bar { display: flex; gap: 8px; justify-content: center; padding: 8px; background: linear-gradient(135deg, #fef9e7, #fff); border-radius: 10px; margin: 8px 0; }
+        .currency-item { font-size: 0.85rem; cursor: pointer; padding: 3px 8px; border-radius: 6px; }
+        .currency-item.gold { color: #d4a017; font-weight: bold; }
+        .currency-item.silver { color: #7f8c8d; font-weight: bold; }
+        .currency-item.copper { color: #8b4513; font-weight: bold; }
+        .tx-link { color: #3498db; font-size: 0.8rem; cursor: pointer; margin-top: 8px; display: inline-block; }
 
-        .section-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; text-align: left; }
+        .section-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; }
+        .user-switcher { display: flex; gap: 8px; justify-content: center; margin-bottom: 15px; }
+        .user-tab { padding: 8px 16px; border: 2px solid #ecf0f1; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: all 0.2s; background: #fff; }
+        .user-tab:hover { border-color: var(--gold); }
+        .user-tab.active { border-color: var(--gold); background: #fef9e7; }
+
+        .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .menu-item { padding: 16px 10px; background: linear-gradient(135deg, #fff, #fef9e7); border: 2px solid #f9e79f; border-radius: 14px; text-decoration: none; color: var(--primary); font-weight: bold; font-size: 0.95rem; transition: all 0.3s; cursor: pointer; text-align: center; display: block; }
+        .menu-item:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(241,196,15,0.3); border-color: var(--gold); }
+        .menu-item .icon { font-size: 1.8rem; margin-bottom: 6px; }
+        .zoo-link { display: block; margin-top: 10px; padding: 14px; background: linear-gradient(135deg,#1a1a2e,#302b63); border-radius: 12px; text-align: center; text-decoration: none; color: #f1c40f; font-size: 1rem; font-weight: bold; }
+
         .user-info { text-align: left; }
         .user-block { background: #fafafa; border-radius: 12px; padding: 15px; margin-bottom: 12px; border: 1px solid #ecf0f1; }
         .user-block h3 { font-size: 1rem; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
         .info-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.85rem; }
         .info-row .label { color: #7f8c8d; }
         .info-row .value { font-weight: bold; }
-        .info-row .value.positive { color: #27ae60; }
-
         .time-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
         .time-cell { text-align: center; background: #f8f9fa; padding: 6px 4px; border-radius: 8px; font-size: 0.7rem; }
         .time-cell .num { font-size: 0.85rem; font-weight: bold; color: var(--accent); }
         .time-cell .lbl { color: #95a5a6; }
-
         .tx-btn { color: #3498db; font-size: 0.8rem; cursor: pointer; margin-top: 6px; display: inline-block; background: none; border: none; padding: 0; }
-        .currency-bar { display: flex; gap: 8px; justify-content: center; padding: 8px; background: linear-gradient(135deg, #fef9e7, #fff); border-radius: 10px; margin: 8px 0; }
-        .currency-item { font-size: 0.85rem; cursor: pointer; padding: 3px 8px; border-radius: 6px; }
-        .currency-item.gold { color: #d4a017; font-weight: bold; }
-        .currency-item.silver { color: #7f8c8d; font-weight: bold; }
-        .currency-item.copper { color: #8b4513; font-weight: bold; }
 
         .back { display: inline-block; margin-top: 15px; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
         .back:hover { color: var(--accent); }
@@ -55,21 +64,15 @@
             <div class="badge">👑 VIP 管理员</div>
             <div class="avatar-picker" id="avatarPicker"></div>
             <div class="avatar-hint">点击头像更换（每天可换三次）</div>
+            <div id="currencyBar"></div>
+            <div class="tx-link" onclick="showTransactions('jerry')">📜 查看交易记录</div>
         </div>
 
         <div class="card">
             <div class="section-title">📖 学习与游戏</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-                <div style="text-align:center;font-weight:bold;padding:8px;background:#fef9e7;border-radius:10px">ZY26 (P5)</div>
-                <div style="text-align:center;font-weight:bold;padding:8px;background:#fef9e7;border-radius:10px">George (P1)</div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <a href="zy26_quiz.html" style="padding:12px;background:#f8f9fa;border-radius:10px;text-align:center;text-decoration:none;color:var(--primary);font-size:0.9rem" onclick="sessionStorage.setItem('vip_auth_zy26','1')">✍️ ZY26做题</a>
-                <a href="george_quiz.html" style="padding:12px;background:#f8f9fa;border-radius:10px;text-align:center;text-decoration:none;color:var(--primary);font-size:0.9rem" onclick="sessionStorage.setItem('vip_auth_george','1')">✍️ George做题</a>
-                <a href="zy26_game.html" style="padding:12px;background:#f8f9fa;border-radius:10px;text-align:center;text-decoration:none;color:var(--primary);font-size:0.9rem" onclick="sessionStorage.setItem('vip_auth_zy26','1')">🎮 ZY26游戏</a>
-                <a href="george_game.html" style="padding:12px;background:#f8f9fa;border-radius:10px;text-align:center;text-decoration:none;color:var(--primary);font-size:0.9rem" onclick="sessionStorage.setItem('vip_auth_george','1')">🎮 George游戏</a>
-            </div>
-            <a href="../games/zoo/index.html" style="display:block;margin-top:12px;padding:14px;background:linear-gradient(135deg,#1a1a2e,#302b63);border-radius:12px;text-align:center;text-decoration:none;color:#f1c40f;font-size:1rem;font-weight:bold">🦁 动物园历险记</a>
+            <div class="user-switcher" id="userSwitcher"></div>
+            <div class="menu" id="contentMenu"></div>
+            <a href="../games/zoo/index.html" class="zoo-link">🦁 动物园历险记</a>
         </div>
 
         <div class="card user-info">
@@ -88,10 +91,12 @@
     <script>
         const USER_KEY = 'vip_jerry';
         const AVATARS = ['🧑‍💻','👨‍💼','🦸','🧙','🤖','👾','🐉','🦅','🐯','🐵','🦊','🐼','🎯','🏆','💎','🔥','👦','👧','🧒','🤴','👸','🧑‍🚀','🧑‍🎓','🦋','🐝','🐢','🦈','🐙','🦜','🐿️','🦔','🌸','🌻','🌺','🌵','🍄','🌴','🍀','🎄','👽','👻','🎃','⭐','🌈','🔮','🎪','🦀'];
-        const MANAGED_USERS = [
+        const ALL_USERS = [
             { id: 'zy26', name: 'ZY26', defaultAvatar: '🐯' },
-            { id: 'george', name: 'George', defaultAvatar: '🐵' }
+            { id: 'george', name: 'George', defaultAvatar: '🐵' },
+            { id: 'jerry', name: 'Jerry', defaultAvatar: '🧑‍💻' },
         ];
+        let selectedContentUser = 'zy26';
 
         function init() {
             try {
@@ -103,15 +108,46 @@
             VipLogin.record('jerry');
             loadAvatar();
             buildPicker();
+            renderCurrencyBar(document.getElementById('currencyBar'), 'jerry');
+            try { vipCloudSync('jerry'); } catch(e) {}
+            _syncAvatarChanges();
+            buildUserSwitcher();
+            updateContentMenu();
             buildDashboard();
             syncAdminDashboard();
-            _syncAvatarChanges();
+        }
+
+        function buildUserSwitcher() {
+            const container = document.getElementById('userSwitcher');
+            container.innerHTML = '';
+            ALL_USERS.forEach(user => {
+                const tab = document.createElement('div');
+                tab.className = 'user-tab' + (selectedContentUser === user.id ? ' active' : '');
+                const avatar = getUserAvatar(user.id, user.defaultAvatar);
+                tab.textContent = avatar + ' ' + user.name;
+                tab.onclick = () => {
+                    selectedContentUser = user.id;
+                    buildUserSwitcher();
+                    updateContentMenu();
+                };
+                container.appendChild(tab);
+            });
+        }
+
+        function updateContentMenu() {
+            const menu = document.getElementById('contentMenu');
+            const uid = selectedContentUser;
+            menu.innerHTML =
+                '<a href="' + uid + '_quiz.html" class="menu-item" onclick="sessionStorage.setItem(\'vip_auth_' + uid + '\',\'1\')">' +
+                    '<div class="icon">✍️</div>做题</a>' +
+                '<a href="' + uid + '_game.html" class="menu-item" onclick="sessionStorage.setItem(\'vip_auth_' + uid + '\',\'1\')">' +
+                    '<div class="icon">🎮</div>游戏</a>';
         }
 
         function syncAdminDashboard() {
             _apiGet('/api/admin/all').then(data => {
                 if (!data) return;
-                for (const user of MANAGED_USERS) {
+                for (const user of ALL_USERS) {
                     const d = data[user.id];
                     if (!d) continue;
                     if (d.balance) VipCurrency.setBalance(user.id, d.balance);
@@ -122,7 +158,7 @@
                         try { localStorage.setItem('vip_' + user.id + '_avatar', d.avatar); } catch(e) {}
                     }
                 }
-                for (const user of MANAGED_USERS) {
+                for (const user of ALL_USERS) {
                     _apiGet('/api/transactions/' + user.id).then(txs => {
                         if (Array.isArray(txs) && txs.length > 0) {
                             try { localStorage.setItem('vip_tx_' + user.id, JSON.stringify(txs)); } catch(e) {}
@@ -130,6 +166,8 @@
                         buildDashboard();
                     });
                 }
+                renderCurrencyBar(document.getElementById('currencyBar'), 'jerry');
+                buildUserSwitcher();
                 buildDashboard();
             });
         }
@@ -200,11 +238,17 @@
             showToast('头像已更新！今天还能换 ' + (left - 1) + ' 次');
         }
 
+        function getUserAvatar(userId, defaultAvatar) {
+            try {
+                return localStorage.getItem('vip_' + userId + '_avatar') || defaultAvatar;
+            } catch(e) { return defaultAvatar; }
+        }
+
         function buildDashboard() {
             const container = document.getElementById('userDashboard');
             container.innerHTML = '';
 
-            for (const user of MANAGED_USERS) {
+            for (const user of ALL_USERS) {
                 const block = document.createElement('div');
                 block.className = 'user-block';
 
@@ -223,8 +267,6 @@
                 }
 
                 let html = '<h3>' + avatar + ' ' + user.name + '</h3>';
-
-                // Currency
                 html += '<div style="margin-bottom:8px">';
                 html += '<div class="info-row"><span class="label">💰 财产</span><span class="value">';
                 const parts = [];
@@ -234,12 +276,9 @@
                 html += parts.join('，');
                 html += '（共' + fmt.total + '文）</span></div>';
                 html += '</div>';
-
-                // Login info
                 html += '<div class="info-row"><span class="label">🕐 最近登录</span><span class="value">' + loginStr + '</span></div>';
                 html += '<div class="info-row"><span class="label">📱 登录设备</span><span class="value">' + deviceStr + '</span></div>';
 
-                // Time stats
                 html += '<div style="margin-top:10px;font-size:0.85rem;font-weight:bold">📊 做题时间</div>';
                 html += '<div class="time-grid">';
                 html += timeCell('今天', stats.quiz.day);
@@ -261,12 +300,6 @@
                 block.innerHTML = html;
                 container.appendChild(block);
             }
-        }
-
-        function getUserAvatar(userId, defaultAvatar) {
-            try {
-                return localStorage.getItem('vip_' + userId + '_avatar') || defaultAvatar;
-            } catch(e) { return defaultAvatar; }
         }
 
         function timeCell(label, seconds) {

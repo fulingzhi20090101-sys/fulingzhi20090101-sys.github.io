@@ -8,29 +8,58 @@
         :root {
             --primary-color: #2c3e50;
             --accent-color: #e67e22;
+            --gold: #f1c40f;
             --bg-color: #f8f9fa;
         }
         body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg-color); color: var(--primary-color); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .card { background: white; width: 90%; max-width: 500px; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
         h1 { font-size: 2.5rem; margin-bottom: 10px; border-bottom: 3px solid var(--accent-color); display: inline-block; padding-bottom: 5px; }
         p { color: #7f8c8d; line-height: 1.6; }
-        .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
-        .menu-item { padding: 15px; background: #fff; border: 2px solid #ecf0f1; border-radius: 12px; text-decoration: none; color: var(--primary-color); font-weight: bold; transition: all 0.3s ease; cursor: pointer; }
+
+        .section-label { font-size: 1rem; font-weight: bold; color: #7f8c8d; margin-top: 30px; margin-bottom: 12px; }
+
+        .vip-users { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .vip-card { padding: 20px 10px; background: linear-gradient(135deg, #fff 0%, #fef9e7 100%); border: 2px solid #f9e79f; border-radius: 14px; text-decoration: none; color: var(--primary-color); transition: all 0.3s ease; cursor: pointer; }
+        .vip-card:hover { transform: translateY(-4px); box-shadow: 0 6px 20px rgba(241,196,15,0.3); border-color: var(--gold); }
+        .vip-avatar { font-size: 2.5rem; margin-bottom: 6px; }
+        .vip-name { font-size: 1rem; font-weight: bold; }
+
+        .zoo-link { display: block; margin-top: 15px; padding: 18px; background: linear-gradient(135deg, #1a1a2e, #302b63); border-radius: 14px; text-decoration: none; color: #f1c40f; font-size: 1.2rem; font-weight: bold; transition: all 0.3s; }
+        .zoo-link:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(48,43,99,0.4); }
+
+        .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .menu-item { padding: 14px; background: #fff; border: 2px solid #ecf0f1; border-radius: 12px; text-decoration: none; color: var(--primary-color); font-weight: bold; transition: all 0.3s ease; cursor: pointer; font-size: 0.95rem; }
         .menu-item:hover { background: var(--accent-color); color: white; border-color: var(--accent-color); transform: translateY(-3px); }
-        .footer { margin-top: 40px; font-size: 0.8rem; color: #bdc3c7; }
+
+        .footer { margin-top: 30px; font-size: 0.8rem; color: #bdc3c7; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>老付家</h1>
         <p>欢迎来到老付家<br>这里记录学习，分享快乐，还有一些好玩的小游戏。</p>
-        
+
+        <div class="section-label">👑 VIP 通道</div>
+        <div class="vip-users">
+            <a href="vip/index.html#zy26" class="vip-card">
+                <div class="vip-avatar" id="avatar_zy26">🐯</div>
+                <div class="vip-name">ZY26</div>
+            </a>
+            <a href="vip/index.html#george" class="vip-card">
+                <div class="vip-avatar" id="avatar_george">🐵</div>
+                <div class="vip-name">George</div>
+            </a>
+            <a href="vip/index.html#jerry" class="vip-card">
+                <div class="vip-avatar" id="avatar_jerry">🧑‍💻</div>
+                <div class="vip-name">Jerry</div>
+            </a>
+        </div>
+
+        <a href="games/zoo/index.html" class="zoo-link">🦁 动物园历险记</a>
+
         <div class="menu">
-            <a href="#" class="menu-item">📚 学习资料</a>
-            <a href="#" class="menu-item">✍️ 个人文章</a>
             <a href="games/xiaobawang/index.html" class="menu-item">🎮 小霸王游戏</a>
             <div class="menu-item" onclick="accessPrivateVideo()">🎬 内部视频</div>
-            <a href="vip/index.html" class="menu-item" style="grid-column: 1 / -1; background: linear-gradient(135deg, #fef9e7, #fff); border-color: #f1c40f;">👑 VIP 专区</a>
         </div>
 
         <div class="footer">
@@ -40,14 +69,9 @@
 
     <script>
         function accessPrivateVideo() {
-            // 1. 设置你希望家人们输入的“访问暗号”（不是网盘提取码，是进入网页的门槛）
-            const webPassword = "laofujia6301"; 
-            
-            // 2. 这里的链接换成你阿里云盘的分享链接
-            const videoUrl = "https://www.alipan.com/s/asoCYe5H2KZ"; 
-
+            const webPassword = "laofujia6301";
+            const videoUrl = "https://www.alipan.com/s/asoCYe5H2KZ";
             const userInput = prompt("请输入老付家专属访问暗号：");
-
             if (userInput === webPassword) {
                 alert("验证通过！即将前往阿里云盘。请使用提取码观看。");
                 window.open(videoUrl, '_blank');
@@ -55,6 +79,16 @@
                 alert("暗号错误，请联系老付获取！");
             }
         }
+
+        const API = 'https://laofujia-api.laofujia-worker.workers.dev';
+        ['zy26', 'george', 'jerry'].forEach(uid => {
+            fetch(API + '/api/avatar/' + uid).then(r => r.json()).then(data => {
+                if (data && data.avatar) {
+                    const el = document.getElementById('avatar_' + uid);
+                    if (el) el.textContent = data.avatar;
+                }
+            }).catch(() => {});
+        });
     </script>
 </body>
 </html>

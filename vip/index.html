@@ -150,6 +150,12 @@
             });
         }
         loadSavedAvatars();
+
+        const hashUser = window.location.hash.slice(1);
+        if (hashUser && users[hashUser]) {
+            showLogin(hashUser);
+            history.replaceState(null, '', window.location.pathname);
+        }
     </script>
 </body>
 </html>
