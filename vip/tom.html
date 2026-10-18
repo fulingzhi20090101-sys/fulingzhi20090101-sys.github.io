@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tom 的专属空间 | 老付家</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e67e22; --gold: #f1c40f; --bg: #f8f9fa; }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--primary); margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .page { width: 90%; max-width: 500px; }
+        .card { background: white; padding: 35px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; margin-bottom: 20px; }
+        .profile .avatar { font-size: 5rem; cursor: pointer; transition: transform 0.3s; }
+        .profile .avatar:hover { transform: scale(1.1); }
+        .profile h1 { font-size: 2rem; margin: 10px 0 5px; }
+        .badge { display: inline-block; background: linear-gradient(135deg, var(--gold), #f39c12); color: white; padding: 4px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+        .avatar-picker { display: none; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
+        .avatar-picker.active { display: flex; }
+        .avatar-picker span { font-size: 2.2rem; cursor: pointer; padding: 8px; border-radius: 12px; transition: all 0.2s; }
+        .avatar-picker span:hover { background: #fef9e7; transform: scale(1.15); }
+        .avatar-picker span.selected { background: #fef9e7; border: 2px solid var(--gold); }
+        .avatar-hint { color: #95a5a6; font-size: 0.8rem; margin-top: 8px; }
+        .currency-bar { display: flex; gap: 12px; justify-content: center; padding: 12px; background: linear-gradient(135deg, #fef9e7, #fff); border-radius: 12px; margin-top: 15px; }
+        .currency-item { font-size: 0.9rem; cursor: pointer; padding: 4px 10px; border-radius: 8px; }
+        .currency-item.gold { color: #d4a017; font-weight: bold; }
+        .currency-item.silver { color: #7f8c8d; font-weight: bold; }
+        .currency-item.copper { color: #8b4513; font-weight: bold; }
+        .tx-link { color: #3498db; font-size: 0.8rem; cursor: pointer; margin-top: 8px; display: inline-block; }
+        .section-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; }
+        .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .menu-item { padding: 20px 10px; background: linear-gradient(135deg, #fff, #fef9e7); border: 2px solid #f9e79f; border-radius: 14px; text-decoration: none; color: var(--primary); font-weight: bold; font-size: 1rem; transition: all 0.3s; cursor: pointer; text-align: center; display: block; }
+        .menu-item:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(241,196,15,0.3); border-color: var(--gold); }
+        .menu-item .icon { font-size: 2rem; margin-bottom: 8px; }
+        .coming-soon { color: #95a5a6; font-size: 0.75rem; margin-top: 4px; }
+        .back { display: inline-block; margin-top: 20px; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+        .back:hover { color: var(--accent); }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="card profile">
+            <div class="avatar" id="currentAvatar" onclick="togglePicker()">🐱</div>
+            <h1>Tom</h1>
+            <div class="badge">👑 VIP 会员</div>
+            <div class="avatar-picker" id="avatarPicker"></div>
+            <div class="avatar-hint" id="avatarHint">点击头像更换（每天可换三次）</div>
+            <div id="currencyBar"></div>
+            <div class="tx-link" onclick="showTransactions('tom')">📜 查看交易记录</div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">📖 学习与娱乐</div>
+            <div class="menu">
+                <a href="tom_quiz.html" class="menu-item">
+                    <div class="icon">✍️</div>
+                    做题
+                    <div class="coming-soon">识字练习</div>
+                </a>
+                <a href="tom_game.html" class="menu-item">
+                    <div class="icon">🎮</div>
+                    游戏
+                    <div class="coming-soon">青蛙跳·赛车</div>
+                </a>
+                <a href="../games/snake.html" class="menu-item">
+                    <div class="icon">🐍</div>
+                    贪吃蛇
+                </a>
+            </div>
+        </div>
+
+        <div style="text-align:center">
+            <a href="#" class="back" onclick="event.preventDefault();showChangePasswordModal()">🔐 修改密码</a>
+            &nbsp;&nbsp;
+            <a href="#" class="back" onclick="event.preventDefault();VipSession.logout()">🚪 退出登录</a>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="vip_common.js?v=5"></script>
+    <script>
+        const USER_KEY = 'vip_tom';
+        const AVATARS = ['🐱','🐯','🐻','🐼','🐨','🦊','🐰','🐸','🐶','🐵','🦄','🐲','🦅','🐧','🐬','🦖','👦','👧','👶','🧒','🤴','👸','🧑‍🚀','🧑‍🎓','🦋','🐝','🐢','🦈','🐙','🦜','🐿️','🦔','🌸','🌻','🌺','🌵','🍄','🌴','🍀','🎄','🤖','👽','👻','🎃','⭐','🌈','🔮','🎪'];
+
+        function init() {
+            if (!VipSession.requireAuth('tom')) return;
+            VipLogin.record('tom');
+            loadAvatar();
+            buildPicker();
+            renderCurrencyBar(document.getElementById('currencyBar'), 'tom');
+            try { vipCloudSync('tom'); } catch(e) {}
+            _syncAvatarChanges();
+        }
+
+        function loadAvatar() {
+            try {
+                const saved = localStorage.getItem(USER_KEY + '_avatar');
+                if (saved) document.getElementById('currentAvatar').textContent = saved;
+            } catch(e) {}
+        }
+
+        function _avatarChangesLeft() {
+            try {
+                const raw = localStorage.getItem(USER_KEY + '_avatar_changes');
+                if (!raw) return 3;
+                const data = JSON.parse(raw);
+                if (data.date !== new Date().toISOString().slice(0, 10)) return 3;
+                return Math.max(0, 3 - (data.count || 0));
+            } catch(e) { return 3; }
+        }
+
+        function _syncAvatarChanges() {
+            const today = new Date().toISOString().slice(0, 10);
+            _apiGet('/api/daily/tom?type=avatar_changes&date=' + today).then(data => {
+                if (data && typeof data.value === 'number' && data.value > 0) {
+                    try { localStorage.setItem(USER_KEY + '_avatar_changes', JSON.stringify({ date: today, count: data.value })); } catch(e) {}
+                }
+            });
+        }
+
+        function _recordAvatarChange() {
+            try {
+                const today = new Date().toISOString().slice(0, 10);
+                const raw = localStorage.getItem(USER_KEY + '_avatar_changes');
+                let count = 1;
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    if (data.date === today) count = (data.count || 0) + 1;
+                }
+                localStorage.setItem(USER_KEY + '_avatar_changes', JSON.stringify({ date: today, count: count }));
+                _apiPost('/api/daily/tom', { type: 'avatar_changes', date: today, value: count });
+            } catch(e) {}
+        }
+
+        function buildPicker() {
+            const picker = document.getElementById('avatarPicker');
+            const current = document.getElementById('currentAvatar').textContent;
+            picker.innerHTML = '';
+            AVATARS.forEach(a => {
+                const span = document.createElement('span');
+                span.textContent = a;
+                if (a === current) span.classList.add('selected');
+                span.onclick = () => selectAvatar(a);
+                picker.appendChild(span);
+            });
+        }
+
+        function togglePicker() { document.getElementById('avatarPicker').classList.toggle('active'); }
+
+        function selectAvatar(emoji) {
+            const left = _avatarChangesLeft();
+            if (left <= 0) { showToast('今天已经换了3次头像，明天再来吧！'); return; }
+            document.getElementById('currentAvatar').textContent = emoji;
+            vipSaveAvatar('tom', emoji);
+            _recordAvatarChange();
+            document.getElementById('avatarPicker').classList.remove('active');
+            buildPicker();
+            showToast('头像已更新！今天还能换 ' + (left - 1) + ' 次');
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        init();
+    </script>
+</body>
+</html>

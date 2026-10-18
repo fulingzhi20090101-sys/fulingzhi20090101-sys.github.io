@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tom 做题 | 老付家</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e67e22; --gold: #f1c40f; --bg: #f8f9fa; --green: #27ae60; --red: #e74c3c; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--primary); }
+        .header { background: white; padding: 12px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 1.2rem; }
+        .header .back { color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+        .currency-bar { display: flex; gap: 12px; justify-content: center; padding: 10px; background: linear-gradient(135deg, #fef9e7, #fff); }
+        .currency-item { font-size: 0.9rem; cursor: pointer; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.8); }
+        .currency-item.gold { color: #d4a017; font-weight: bold; }
+        .currency-item.silver { color: #7f8c8d; font-weight: bold; }
+        .currency-item.copper { color: #8b4513; font-weight: bold; }
+        .score-bar { text-align: center; padding: 8px; font-size: 0.9rem; color: #7f8c8d; background: white; border-bottom: 1px solid #ecf0f1; }
+        .content { max-width: 500px; margin: 0 auto; padding: 16px; }
+        .quiz-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .quiz-menu-item { background: white; border-radius: 14px; padding: 18px 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.3s; border: 2px solid transparent; }
+        .quiz-menu-item:hover { border-color: var(--gold); transform: translateY(-2px); }
+        .quiz-menu-item .icon { font-size: 2rem; margin-bottom: 6px; }
+        .quiz-menu-item .title { font-weight: bold; font-size: 0.95rem; }
+        .quiz-menu-item .desc { color: #95a5a6; font-size: 0.75rem; margin-top: 4px; }
+        .quiz-question { background: white; border-radius: 16px; padding: 30px 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .quiz-type-label { font-size: 0.85rem; color: var(--accent); font-weight: bold; margin-bottom: 10px; }
+        .quiz-prompt { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 15px; }
+        .speak-btn { background: var(--accent); color: white; border: none; padding: 10px 24px; border-radius: 25px; font-size: 1rem; cursor: pointer; margin-bottom: 15px; transition: transform 0.2s; }
+        .speak-btn:active { transform: scale(0.95); }
+        .quiz-big-char { font-size: 4rem; margin: 15px 0; font-weight: bold; }
+        .quiz-big-pinyin { font-size: 2.5rem; margin: 15px 0; color: var(--accent); }
+        .quiz-target-word { font-size: 1.2rem; margin: 10px 0 20px; }
+        .quiz-target-word .blank { color: var(--red); font-weight: bold; }
+        .quiz-target-word .highlight { color: var(--accent); font-weight: bold; }
+        .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .quiz-option { padding: 16px; background: #f8f9fa; border: 2px solid #ecf0f1; border-radius: 12px; font-size: 1.8rem; cursor: pointer; transition: all 0.2s; }
+        .quiz-option:hover, .quiz-option:active { border-color: var(--gold); background: #fef9e7; }
+        .quiz-option.pinyin { font-size: 1.2rem; }
+        .quiz-option.word { font-size: 1.3rem; }
+        .word-options { grid-template-columns: 1fr; }
+        .match-grid { display: flex; gap: 16px; justify-content: center; margin-top: 15px; }
+        .match-col { display: flex; flex-direction: column; gap: 10px; flex: 1; max-width: 45%; }
+        .match-card { width: 100%; padding: 16px 10px; background: #f8f9fa; border: 2px solid #ecf0f1; border-radius: 12px; cursor: pointer; transition: all 0.2s; text-align: center; box-sizing: border-box; }
+        .match-card.char-btn { font-size: 2.2rem; font-weight: bold; }
+        .match-card.pinyin-btn { font-size: 1.5rem; }
+        .match-btn.selected { border-color: var(--gold); background: #fef9e7; }
+        .match-btn.matched { border-color: var(--green); background: #eafaf1; opacity: 0.6; }
+        .match-btn.wrong { border-color: var(--red); background: #fdedec; animation: shake 0.3s; }
+        .timed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .timed-timer { font-size: 1.5rem; font-weight: bold; color: var(--red); }
+        .timed-score { font-size: 1.2rem; font-weight: bold; color: var(--green); }
+        .quiz-question.timed .quiz-big-char { font-size: 3.5rem; margin: 10px 0; }
+        .quiz-result { background: white; border-radius: 16px; padding: 35px 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .quiz-result.correct { border-top: 4px solid var(--green); }
+        .quiz-result.wrong { border-top: 4px solid var(--red); }
+        .result-icon { font-size: 3rem; margin-bottom: 10px; }
+        .result-msg { font-size: 1.1rem; margin: 10px 0; }
+        .result-score { font-size: 2rem; font-weight: bold; color: var(--accent); }
+        .streak { color: var(--accent); font-size: 0.9rem; margin: 8px 0; }
+        .quiz-btn { background: var(--gold); color: white; border: none; padding: 12px 30px; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; margin: 8px 5px 0; transition: transform 0.2s; }
+        .quiz-btn:active { transform: scale(0.95); }
+        .quiz-btn.secondary { background: #ecf0f1; color: #7f8c8d; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="tom.html" class="back">← 返回</a>
+        <h1>✍️ Tom 做题</h1>
+        <span></span>
+    </div>
+    <div id="currencyBar"></div>
+    <div class="score-bar" id="scoreBar">选择练习类型开始做题</div>
+    <div class="content" id="quizArea"></div>
+    <div class="toast" id="toast"></div>
+
+    <script src="vip_common.js?v=5"></script>
+    <script src="chars_p1.js?v=3"></script>
+    <script src="quiz_engine.js?v=4"></script>
+    <script>
+        const USER_ID = 'tom';
+        let quiz;
+        let currentMode = null;
+
+        function init() {
+            if (!VipSession.requireAuth('tom')) return;
+
+            if ('speechSynthesis' in window) {
+                speechSynthesis.getVoices();
+                speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+            }
+
+            VipLogin.record(USER_ID);
+            VipTime.startTracking(USER_ID, 'quiz');
+            renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
+            try { vipCloudSync(USER_ID); } catch(e) {}
+
+            quiz = new QuizEngine(CHARS_P1, USER_ID, document.getElementById('quizArea'));
+            quiz.onScoreChange = updateScore;
+            showQuizMenu();
+        }
+
+        function showQuizMenu() {
+            currentMode = null;
+            if (quiz) quiz.stopTimer();
+            document.getElementById('scoreBar').textContent = '选择练习类型开始做题';
+            const area = document.getElementById('quizArea');
+            area.innerHTML = `
+                <div class="quiz-menu">
+                    <div class="quiz-menu-item" onclick="startQuiz('listenChooseChar')">
+                        <div class="icon">🎧</div><div class="title">听词选字</div><div class="desc">听词语选汉字</div>
+                    </div>
+                    <div class="quiz-menu-item" onclick="startQuiz('listenFillBlank')">
+                        <div class="icon">🔊</div><div class="title">听句填空</div><div class="desc">听词语填空缺字</div>
+                    </div>
+                    <div class="quiz-menu-item" onclick="startQuiz('charToPinyin')">
+                        <div class="icon">📝</div><div class="title">看字选拼音</div><div class="desc">看汉字选拼音</div>
+                    </div>
+                    <div class="quiz-menu-item" onclick="startQuiz('pinyinToChar')">
+                        <div class="icon">🔤</div><div class="title">看拼音选字</div><div class="desc">看拼音选汉字</div>
+                    </div>
+                    <div class="quiz-menu-item" onclick="startQuiz('matchPairs')">
+                        <div class="icon">🧩</div><div class="title">连连看</div><div class="desc">汉字拼音配对</div>
+                    </div>
+                    <div class="quiz-menu-item" onclick="startQuiz('timedChallenge')">
+                        <div class="icon">⚡</div><div class="title">限时挑战</div><div class="desc">30秒答题赢铜钱</div>
+                    </div>
+                    <div class="quiz-menu-item" onclick="startQuiz('formWord')">
+                        <div class="icon">📖</div><div class="title">组词练习</div><div class="desc">选字组成词语</div>
+                    </div>
+                    <div class="quiz-menu-item" onclick="startQuiz('wordMeaning')">
+                        <div class="icon">👂</div><div class="title">听音选词</div><div class="desc">听发音选词语</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function startQuiz(mode) {
+            currentMode = mode;
+            updateScore(0, 0);
+            quiz.randomQuestion(mode);
+        }
+
+        function nextQuestion() {
+            if (currentMode === 'matchPairs') quiz.matchPairs();
+            else showQuizMenu();
+        }
+
+        function updateScore(score, total) {
+            document.getElementById('scoreBar').textContent = '答对: ' + score + ' / ' + total + (quiz.streak >= 3 ? ' 🔥' + quiz.streak + '连' : '');
+        }
+
+        window.addEventListener('beforeunload', () => VipTime.stopTracking());
+        init();
+    </script>
+</body>
+</html>

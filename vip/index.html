@@ -46,7 +46,7 @@
         <h1><span>👑</span> VIP 专区</h1>
         <p>老付家尊贵会员</p>
 
-        <div class="users">
+        <div class="users" style="grid-template-columns: 1fr 1fr;">
             <div class="user-card" onclick="showLogin('zy26')">
                 <div class="user-avatar" id="avatar_zy26">🐯</div>
                 <div class="user-name">ZY26</div>
@@ -54,6 +54,10 @@
             <div class="user-card" onclick="showLogin('george')">
                 <div class="user-avatar" id="avatar_george">🐵</div>
                 <div class="user-name">George</div>
+            </div>
+            <div class="user-card" onclick="showLogin('tom')">
+                <div class="user-avatar" id="avatar_tom">🐱</div>
+                <div class="user-name">Tom</div>
             </div>
             <div class="user-card" onclick="showLogin('jerry')">
                 <div class="user-avatar" id="avatar_jerry">🧑‍💻</div>
@@ -83,6 +87,7 @@
         const users = {
             zy26:   { name: 'ZY26',   avatar: '🐯', page: 'zy26.html' },
             george: { name: 'George', avatar: '🐵', page: 'george.html' },
+            tom:    { name: 'Tom',    avatar: '🐱', page: 'tom.html' },
             jerry:  { name: 'Jerry',  avatar: '🧑‍💻', page: 'jerry.html' }
         };
         let currentUser = null;
@@ -151,7 +156,7 @@
         });
 
         function loadAvatars() {
-            const uids = ['zy26', 'george', 'jerry'];
+            const uids = ['zy26', 'george', 'tom', 'jerry'];
             uids.forEach(uid => {
                 fetch(API + '/api/avatar/' + uid).then(r => r.json()).then(data => {
                     if (data && data.avatar) {

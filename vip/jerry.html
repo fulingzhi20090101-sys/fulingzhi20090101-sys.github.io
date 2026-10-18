@@ -75,6 +75,18 @@
             <a href="../games/zoo/index.html" class="zoo-link">🦁 动物园历险记</a>
         </div>
 
+        <div class="card">
+            <div class="section-title">💰 每日津贴 & 转账</div>
+            <div id="dailyAllowance" style="text-align:center;margin-bottom:15px"></div>
+            <div id="transferSection" style="text-align:center">
+                <div style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap">
+                    <select id="transferTo" style="padding:8px 12px;border:2px solid #ecf0f1;border-radius:8px;font-size:1rem"></select>
+                    <input type="number" id="transferAmount" placeholder="金额" min="1" style="width:80px;padding:8px;border:2px solid #ecf0f1;border-radius:8px;font-size:1rem">
+                    <button onclick="doTransfer()" style="padding:8px 16px;background:linear-gradient(135deg,#f1c40f,#f39c12);border:none;border-radius:8px;color:white;font-weight:bold;cursor:pointer;font-size:1rem">转账</button>
+                </div>
+            </div>
+        </div>
+
         <div class="card user-info">
             <div class="section-title">👥 用户管理</div>
             <div id="userDashboard"></div>
@@ -96,6 +108,7 @@
         const ALL_USERS = [
             { id: 'zy26', name: 'ZY26', defaultAvatar: '🐯' },
             { id: 'george', name: 'George', defaultAvatar: '🐵' },
+            { id: 'tom', name: 'Tom', defaultAvatar: '🐱' },
             { id: 'jerry', name: 'Jerry', defaultAvatar: '🧑‍💻' },
         ];
         let selectedContentUser = 'zy26';
@@ -112,6 +125,68 @@
             updateContentMenu();
             buildDashboard();
             syncAdminDashboard();
+            claimDailyAllowance();
+            buildTransferUI();
+        }
+
+        function claimDailyAllowance() {
+            const el = document.getElementById('dailyAllowance');
+            const token = VipSession.getToken();
+            fetch(VIP_API_BASE + '/api/claim-daily', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            }).then(r => r.json()).then(data => {
+                if (data.ok && !data.already && data.amount > 0) {
+                    el.innerHTML = '<div style="color:#27ae60;font-weight:bold">✅ 今日津贴已领取：+' + data.amount + '文</div>';
+                    VipCurrency.setBalance('jerry', data.balance);
+                    renderCurrencyBar(document.getElementById('currencyBar'), 'jerry');
+                    showToast('每日津贴 +' + data.amount + '文！');
+                } else {
+                    el.innerHTML = '<div style="color:#95a5a6;font-size:0.85rem">今日津贴已领取 (1000文/天)</div>';
+                }
+            }).catch(() => {
+                el.innerHTML = '<div style="color:#95a5a6;font-size:0.85rem">津贴加载中...</div>';
+            });
+        }
+
+        function buildTransferUI() {
+            const sel = document.getElementById('transferTo');
+            sel.innerHTML = '';
+            ALL_USERS.filter(u => u.id !== 'jerry').forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = u.name;
+                sel.appendChild(opt);
+            });
+        }
+
+        async function doTransfer() {
+            const to = document.getElementById('transferTo').value;
+            const amount = parseInt(document.getElementById('transferAmount').value, 10);
+            if (!to || !amount || amount <= 0) { showToast('请输入有效金额'); return; }
+
+            const token = VipSession.getToken();
+            try {
+                const resp = await fetch(VIP_API_BASE + '/api/transfer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ to, amount }),
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    VipCurrency.setBalance('jerry', data.fromBalance);
+                    VipCurrency.setBalance(to, data.toBalance);
+                    renderCurrencyBar(document.getElementById('currencyBar'), 'jerry');
+                    buildDashboard();
+                    document.getElementById('transferAmount').value = '';
+                    const name = ALL_USERS.find(u => u.id === to)?.name || to;
+                    showToast('已转 ' + amount + '文 给 ' + name + '！');
+                } else {
+                    showToast(data.error === 'insufficient funds' ? '铜钱不够！' : (data.error || '转账失败'));
+                }
+            } catch(e) {
+                showToast('网络错误');
+            }
         }
 
         function buildUserSwitcher() {

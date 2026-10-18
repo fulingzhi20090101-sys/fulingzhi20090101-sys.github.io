@@ -73,6 +73,12 @@
                 <div class="desc">躲开敌车！点屏幕左右或按←→换道。</div>
                 <div class="cost">选择游玩时间</div>
             </div>
+            <div class="game-card" onclick="selectGame('snake')">
+                <div class="icon">🐍</div>
+                <div class="title">贪吃蛇</div>
+                <div class="desc">方向键或WASD控制，吃食物变长！数字键调速。</div>
+                <div class="cost">选择游玩时间</div>
+            </div>
         </div>
     </div>
 
@@ -111,6 +117,7 @@
     <script src="vip_common.js?v=5"></script>
     <script src="../games/xiaobawang/games/frogjump.js"></script>
     <script src="../games/xiaobawang/games/carrace.js"></script>
+    <script src="../games/xiaobawang/games/snake.js"></script>
     <script>
         const USER_ID = 'jerry';
         let currentGame = null;
@@ -249,6 +256,13 @@
                 currentGame = new CarRace(canvas, 3);
                 window.carRaceInstance = currentGame;
                 currentGame.start();
+            } else if (gameKey === 'snake') {
+                window.onSnakeScore = (s) => { document.getElementById('gameScore').textContent = '得分: ' + s; };
+                window.onSnakeOver = (s) => gameOver(s);
+                if (window.snakeInstance) window.snakeInstance.stop();
+                currentGame = new SnakeGame(canvas);
+                window.snakeInstance = currentGame;
+                currentGame.start();
             }
         }
 
@@ -304,6 +318,11 @@
                 if (window.carRaceInstance) window.carRaceInstance.stop();
                 currentGame = new CarRace(canvas, 3);
                 window.carRaceInstance = currentGame;
+                currentGame.start();
+            } else if (currentGameKey === 'snake') {
+                if (window.snakeInstance) window.snakeInstance.stop();
+                currentGame = new SnakeGame(canvas);
+                window.snakeInstance = currentGame;
                 currentGame.start();
             }
         }
