@@ -33,7 +33,7 @@
         <p>欢迎来到老付家<br>这里记录学习，分享快乐，还有一些好玩的小游戏。</p>
 
         <div class="section-label">👑 VIP 通道</div>
-        <div class="vip-users">
+        <div class="vip-users" style="grid-template-columns: 1fr 1fr;">
             <a href="vip/index.html#zy26" class="vip-card">
                 <div class="vip-avatar" id="avatar_zy26">🐯</div>
                 <div class="vip-name">ZY26</div>
@@ -41,6 +41,10 @@
             <a href="vip/index.html#george" class="vip-card">
                 <div class="vip-avatar" id="avatar_george">🐵</div>
                 <div class="vip-name">George</div>
+            </a>
+            <a href="vip/index.html#tom" class="vip-card">
+                <div class="vip-avatar" id="avatar_tom">🐱</div>
+                <div class="vip-name">Tom</div>
             </a>
             <a href="vip/index.html#jerry" class="vip-card">
                 <div class="vip-avatar" id="avatar_jerry">🧑‍💻</div>
@@ -54,8 +58,8 @@
     </div>
 
     <script>
-        const API = 'https://laofujia-api.laofujia-worker.workers.dev';
-        ['zy26', 'george', 'jerry'].forEach(uid => {
+        const API = '';
+        ['zy26', 'george', 'tom', 'jerry'].forEach(uid => {
             fetch(API + '/api/avatar/' + uid).then(r => r.json()).then(data => {
                 if (data && data.avatar) {
                     const el = document.getElementById('avatar_' + uid);

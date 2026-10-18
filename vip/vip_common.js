@@ -1,6 +1,6 @@
 'use strict';
 
-const VIP_API_BASE = 'https://laofujia-api.laofujia-worker.workers.dev';
+const VIP_API_BASE = '';
 const VIP_CURRENCY_KEY = 'vip_currency_';
 const VIP_TRANSACTIONS_KEY = 'vip_tx_';
 const VIP_TIME_KEY = 'vip_time_';
