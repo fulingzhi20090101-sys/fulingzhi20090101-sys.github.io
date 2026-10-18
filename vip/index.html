@@ -36,6 +36,7 @@
         .modal-buttons button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s; }
         .btn-login { background: linear-gradient(135deg, var(--gold), #f39c12); color: white; }
         .btn-login:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(241,196,15,0.4); }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-cancel { background: #ecf0f1; color: #7f8c8d; }
         .btn-cancel:hover { background: #dfe6e9; }
     </style>
@@ -47,15 +48,15 @@
 
         <div class="users">
             <div class="user-card" onclick="showLogin('zy26')">
-                <div class="user-avatar">🐯</div>
+                <div class="user-avatar" id="avatar_zy26">🐯</div>
                 <div class="user-name">ZY26</div>
             </div>
             <div class="user-card" onclick="showLogin('george')">
-                <div class="user-avatar">🐵</div>
+                <div class="user-avatar" id="avatar_george">🐵</div>
                 <div class="user-name">George</div>
             </div>
             <div class="user-card" onclick="showLogin('jerry')">
-                <div class="user-avatar">🧑‍💻</div>
+                <div class="user-avatar" id="avatar_jerry">🧑‍💻</div>
                 <div class="user-name">Jerry</div>
             </div>
         </div>
@@ -72,16 +73,17 @@
             <div class="error" id="errorMsg">密码错误，请重试</div>
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="hideLogin()">取消</button>
-                <button class="btn-login" onclick="doLogin()">登录</button>
+                <button class="btn-login" id="loginBtn" onclick="doLogin()">登录</button>
             </div>
         </div>
     </div>
 
     <script>
+        const API = 'https://laofujia-api.laofujia-worker.workers.dev';
         const users = {
-            zy26:   { name: 'ZY26',   avatar: '🐯', hash: '917a1154497ce21131df744be8b52a5115dfabf57a28b30a2ac6d5cdfcfcf573', page: 'zy26.html' },
-            george: { name: 'George', avatar: '🐵', hash: '9b28b737888eb48c5ed2ac9c0220aacf01aed07c3b3ffd698fc132ed5f6a4fb8', page: 'george.html' },
-            jerry:  { name: 'Jerry',  avatar: '🧑‍💻', hash: 'ed1199f5184936d599ae41056ed03d9987f998f8468e4f456fdd351dffbe9300', page: 'jerry.html' }
+            zy26:   { name: 'ZY26',   avatar: '🐯', page: 'zy26.html' },
+            george: { name: 'George', avatar: '🐵', page: 'george.html' },
+            jerry:  { name: 'Jerry',  avatar: '🧑‍💻', page: 'jerry.html' }
         };
         let currentUser = null;
 
@@ -92,6 +94,8 @@
             document.getElementById('modalName').textContent = u.name;
             document.getElementById('passwordInput').value = '';
             document.getElementById('errorMsg').style.display = 'none';
+            document.getElementById('loginBtn').disabled = false;
+            document.getElementById('loginBtn').textContent = '登录';
             document.getElementById('loginModal').classList.add('active');
             setTimeout(() => document.getElementById('passwordInput').focus(), 100);
         }
@@ -101,24 +105,44 @@
             currentUser = null;
         }
 
-        async function sha256(message) {
-            const msgBuffer = new TextEncoder().encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
         async function doLogin() {
             const pw = document.getElementById('passwordInput').value;
             if (!pw) return;
-            const hash = await sha256(pw);
-            const u = users[currentUser];
-            if (hash === u.hash) {
-                try { sessionStorage.setItem('vip_auth_' + currentUser, '1'); } catch(e) {}
-                window.location.href = u.page;
-            } else {
+
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+            document.getElementById('errorMsg').style.display = 'none';
+
+            try {
+                const resp = await fetch(API + '/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser, password: pw }),
+                });
+                const data = await resp.json();
+
+                if (data.ok && data.token) {
+                    try {
+                        sessionStorage.setItem('vip_session', JSON.stringify({
+                            token: data.token,
+                            userId: data.userId,
+                            name: data.name,
+                        }));
+                    } catch(e) {}
+                    window.location.href = users[currentUser].page;
+                } else {
+                    document.getElementById('errorMsg').style.display = 'block';
+                    document.getElementById('passwordInput').value = '';
+                    document.getElementById('passwordInput').focus();
+                    btn.disabled = false;
+                    btn.textContent = '登录';
+                }
+            } catch(e) {
+                document.getElementById('errorMsg').textContent = '网络错误，请重试';
                 document.getElementById('errorMsg').style.display = 'block';
-                document.getElementById('passwordInput').value = '';
-                document.getElementById('passwordInput').focus();
+                btn.disabled = false;
+                btn.textContent = '登录';
             }
         }
 
@@ -126,30 +150,19 @@
             if (e.target === this) hideLogin();
         });
 
-        function loadSavedAvatars() {
-            const cards = document.querySelectorAll('.user-card');
+        function loadAvatars() {
             const uids = ['zy26', 'george', 'jerry'];
-            cards.forEach((card, i) => {
-                try {
-                    const saved = localStorage.getItem('vip_' + uids[i] + '_avatar');
-                    if (saved) {
-                        card.querySelector('.user-avatar').textContent = saved;
-                        users[uids[i]].avatar = saved;
-                    }
-                } catch(e) {}
-            });
-            const API = 'https://laofujia-api.laofujia-worker.workers.dev';
-            uids.forEach((uid, i) => {
+            uids.forEach(uid => {
                 fetch(API + '/api/avatar/' + uid).then(r => r.json()).then(data => {
                     if (data && data.avatar) {
-                        cards[i].querySelector('.user-avatar').textContent = data.avatar;
+                        const el = document.getElementById('avatar_' + uid);
+                        if (el) el.textContent = data.avatar;
                         users[uid].avatar = data.avatar;
-                        try { localStorage.setItem('vip_' + uid + '_avatar', data.avatar); } catch(e) {}
                     }
                 }).catch(() => {});
             });
         }
-        loadSavedAvatars();
+        loadAvatars();
 
         const hashUser = window.location.hash.slice(1);
         if (hashUser && users[hashUser]) {

@@ -70,24 +70,21 @@
         </div>
 
         <div style="text-align:center">
-            <a href="index.html" class="back" onclick="sessionStorage.removeItem('vip_auth_zy26')">🚪 退出登录</a>
+            <a href="#" class="back" onclick="event.preventDefault();showChangePasswordModal()">🔐 修改密码</a>
+            &nbsp;&nbsp;
+            <a href="#" class="back" onclick="event.preventDefault();VipSession.logout()">🚪 退出登录</a>
         </div>
     </div>
 
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js?v=4"></script>
+    <script src="vip_common.js?v=5"></script>
     <script>
         const USER_KEY = 'vip_zy26';
         const AVATARS = ['🐯','🦁','🐻','🐼','🐨','🦊','🐰','🐸','🐶','🐱','🦄','🐲','🦅','🐧','🐬','🦖','👦','👧','👶','🧒','🤴','👸','🧑‍🚀','🧑‍🎓','🦋','🐝','🐢','🦈','🐙','🦜','🐿️','🦔','🌸','🌻','🌺','🌵','🍄','🌴','🍀','🎄','🤖','👽','👻','🎃','⭐','🌈','🔮','🎪'];
 
         function init() {
-            try {
-                if (sessionStorage.getItem('vip_auth_zy26') !== '1') {
-                    window.location.href = 'index.html';
-                    return;
-                }
-            } catch(e) {}
+            if (!VipSession.requireAuth('zy26')) return;
             VipLogin.record('zy26');
             loadAvatar();
             buildPicker();

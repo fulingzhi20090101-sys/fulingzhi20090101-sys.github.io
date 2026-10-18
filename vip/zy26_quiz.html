@@ -90,7 +90,7 @@
     <div class="content" id="quizArea"></div>
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js?v=4"></script>
+    <script src="vip_common.js?v=5"></script>
     <script src="chars_p5.js?v=3"></script>
     <script src="quiz_engine.js?v=4"></script>
     <script>
@@ -99,12 +99,7 @@
         let currentMode = null;
 
         function init() {
-            try {
-                if (sessionStorage.getItem('vip_auth_zy26') !== '1') {
-                    window.location.href = 'index.html';
-                    return;
-                }
-            } catch(e) {}
+            if (!VipSession.requireAuth('zy26')) return;
 
             if ('speechSynthesis' in window) {
                 speechSynthesis.getVoices();

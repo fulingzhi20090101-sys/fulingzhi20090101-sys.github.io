@@ -7,16 +7,80 @@ const VIP_TIME_KEY = 'vip_time_';
 const VIP_LOGIN_KEY = 'vip_login_';
 const VIP_INITIAL_COPPER = 88;
 
+// ── Session management ──
+
+const VipSession = {
+    get() {
+        try {
+            const raw = sessionStorage.getItem('vip_session');
+            if (raw) return JSON.parse(raw);
+        } catch(e) {}
+        return null;
+    },
+
+    getToken() {
+        const s = this.get();
+        return s ? s.token : null;
+    },
+
+    getUserId() {
+        const s = this.get();
+        return s ? s.userId : null;
+    },
+
+    clear() {
+        try { sessionStorage.removeItem('vip_session'); } catch(e) {}
+    },
+
+    requireAuth(expectedUserId) {
+        const s = this.get();
+        if (!s || (s.userId !== expectedUserId && s.userId !== 'jerry')) {
+            window.location.href = 'index.html';
+            return false;
+        }
+        fetch(VIP_API_BASE + '/api/auth/session', {
+            headers: { 'Authorization': 'Bearer ' + s.token },
+        }).then(r => r.json()).then(data => {
+            if (!data.valid) {
+                this.clear();
+                window.location.href = 'index.html';
+            }
+        }).catch(() => {});
+        return true;
+    },
+
+    logout() {
+        const token = this.getToken();
+        if (token) {
+            fetch(VIP_API_BASE + '/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+            }).catch(() => {});
+        }
+        this.clear();
+        window.location.href = 'index.html';
+    }
+};
+
+function _authHeaders() {
+    const token = VipSession.getToken();
+    const h = { 'Content-Type': 'application/json' };
+    if (token) h['Authorization'] = 'Bearer ' + token;
+    return h;
+}
+
 function _apiPost(path, data) {
     return fetch(VIP_API_BASE + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _authHeaders(),
         body: JSON.stringify(data),
     }).then(r => r.json()).catch(() => null);
 }
 
 function _apiGet(path) {
-    return fetch(VIP_API_BASE + path).then(r => r.json()).catch(() => null);
+    return fetch(VIP_API_BASE + path, {
+        headers: _authHeaders(),
+    }).then(r => r.json()).catch(() => null);
 }
 
 const VipCurrency = {
@@ -162,7 +226,6 @@ const VipLogin = {
             date: new Date().toISOString()
         };
         try { localStorage.setItem(VIP_LOGIN_KEY + userId, JSON.stringify(info)); } catch(e) {}
-        _apiPost('/api/login/' + userId, { device: info.device });
     },
 
     getLast(userId) {
@@ -183,6 +246,86 @@ const VipLogin = {
         return '未知设备';
     }
 };
+
+// ── Password change ──
+
+function showChangePasswordModal() {
+    const existing = document.getElementById('pw-change-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'pw-change-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+    modal.innerHTML = '<div style="background:white;padding:30px;border-radius:16px;max-width:360px;width:90%;text-align:center">' +
+        '<h3 style="margin:0 0 20px">🔐 修改密码</h3>' +
+        '<input type="password" id="pwOld" placeholder="当前密码" style="width:100%;padding:10px;border:2px solid #ecf0f1;border-radius:8px;margin-bottom:10px;box-sizing:border-box;font-size:1rem"><br>' +
+        '<input type="password" id="pwNew" placeholder="新密码（至少4位）" style="width:100%;padding:10px;border:2px solid #ecf0f1;border-radius:8px;margin-bottom:10px;box-sizing:border-box;font-size:1rem"><br>' +
+        '<input type="password" id="pwConfirm" placeholder="确认新密码" style="width:100%;padding:10px;border:2px solid #ecf0f1;border-radius:8px;margin-bottom:10px;box-sizing:border-box;font-size:1rem">' +
+        '<div id="pwError" style="color:#e74c3c;font-size:0.85rem;margin:8px 0;display:none"></div>' +
+        '<div style="display:flex;gap:10px;margin-top:15px">' +
+        '<button onclick="this.closest(\'#pw-change-modal\').remove()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#ecf0f1;color:#7f8c8d;font-size:1rem;cursor:pointer">取消</button>' +
+        '<button id="pwSubmit" onclick="doChangePassword()" style="flex:1;padding:10px;border:none;border-radius:8px;background:linear-gradient(135deg,#f1c40f,#f39c12);color:white;font-weight:bold;font-size:1rem;cursor:pointer">确认修改</button>' +
+        '</div></div>';
+    document.body.appendChild(modal);
+    document.getElementById('pwOld').focus();
+}
+
+async function doChangePassword() {
+    const oldPw = document.getElementById('pwOld').value;
+    const newPw = document.getElementById('pwNew').value;
+    const confirm = document.getElementById('pwConfirm').value;
+    const errEl = document.getElementById('pwError');
+    const btn = document.getElementById('pwSubmit');
+
+    if (!oldPw || !newPw || !confirm) {
+        errEl.textContent = '请填写所有字段';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (newPw.length < 4) {
+        errEl.textContent = '新密码至少4位';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (newPw !== confirm) {
+        errEl.textContent = '两次输入的新密码不一致';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '修改中...';
+    errEl.style.display = 'none';
+
+    try {
+        const token = VipSession.getToken();
+        const resp = await fetch(VIP_API_BASE + '/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }),
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            const modal = document.getElementById('pw-change-modal');
+            if (modal) modal.remove();
+            if (typeof showToast === 'function') showToast('密码修改成功！');
+            else alert('密码修改成功！');
+        } else {
+            errEl.textContent = data.error === 'wrong password' ? '当前密码错误' : (data.error || '修改失败');
+            errEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = '确认修改';
+        }
+    } catch(e) {
+        errEl.textContent = '网络错误，请重试';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '确认修改';
+    }
+}
 
 function vipCloudSync(userId) {
     VipCurrency.syncFromCloud(userId).then(bal => {

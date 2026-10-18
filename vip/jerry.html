@@ -81,13 +81,15 @@
         </div>
 
         <div style="text-align:center">
-            <a href="index.html" class="back" onclick="sessionStorage.removeItem('vip_auth_jerry')">🚪 退出登录</a>
+            <a href="#" class="back" onclick="event.preventDefault();showChangePasswordModal()">🔐 修改密码</a>
+            &nbsp;&nbsp;
+            <a href="#" class="back" onclick="event.preventDefault();VipSession.logout()">🚪 退出登录</a>
         </div>
     </div>
 
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js?v=4"></script>
+    <script src="vip_common.js?v=5"></script>
     <script>
         const USER_KEY = 'vip_jerry';
         const AVATARS = ['🧑‍💻','👨‍💼','🦸','🧙','🤖','👾','🐉','🦅','🐯','🐵','🦊','🐼','🎯','🏆','💎','🔥','👦','👧','🧒','🤴','👸','🧑‍🚀','🧑‍🎓','🦋','🐝','🐢','🦈','🐙','🦜','🐿️','🦔','🌸','🌻','🌺','🌵','🍄','🌴','🍀','🎄','👽','👻','🎃','⭐','🌈','🔮','🎪','🦀'];
@@ -99,12 +101,7 @@
         let selectedContentUser = 'zy26';
 
         function init() {
-            try {
-                if (sessionStorage.getItem('vip_auth_jerry') !== '1') {
-                    window.location.href = 'index.html';
-                    return;
-                }
-            } catch(e) {}
+            if (!VipSession.requireAuth('jerry')) return;
             VipLogin.record('jerry');
             loadAvatar();
             buildPicker();
@@ -138,9 +135,9 @@
             const menu = document.getElementById('contentMenu');
             const uid = selectedContentUser;
             menu.innerHTML =
-                '<a href="' + uid + '_quiz.html" class="menu-item" onclick="sessionStorage.setItem(\'vip_auth_' + uid + '\',\'1\')">' +
+                '<a href="' + uid + '_quiz.html" class="menu-item">' +
                     '<div class="icon">✍️</div>做题</a>' +
-                '<a href="' + uid + '_game.html" class="menu-item" onclick="sessionStorage.setItem(\'vip_auth_' + uid + '\',\'1\')">' +
+                '<a href="' + uid + '_game.html" class="menu-item">' +
                     '<div class="icon">🎮</div>游戏</a>';
         }
 
@@ -296,6 +293,9 @@
                 html += '</div>';
 
                 html += '<button class="tx-btn" onclick="showTransactions(\'' + user.id + '\')">📜 查看交易记录</button>';
+                if (user.id !== 'jerry') {
+                    html += ' <button class="tx-btn" onclick="showResetPassword(\'' + user.id + '\',\'' + user.name + '\')">🔐 重置密码</button>';
+                }
 
                 block.innerHTML = html;
                 container.appendChild(block);
@@ -304,6 +304,61 @@
 
         function timeCell(label, seconds) {
             return '<div class="time-cell"><div class="num">' + formatSeconds(seconds) + '</div><div class="lbl">' + label + '</div></div>';
+        }
+
+        function showResetPassword(userId, userName) {
+            const existing = document.getElementById('reset-pw-modal');
+            if (existing) existing.remove();
+            const modal = document.createElement('div');
+            modal.id = 'reset-pw-modal';
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
+            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+            modal.innerHTML = '<div style="background:white;padding:30px;border-radius:16px;max-width:360px;width:90%;text-align:center">' +
+                '<h3 style="margin:0 0 15px">🔐 重置 ' + userName + ' 的密码</h3>' +
+                '<input type="password" id="resetNewPw" placeholder="输入新密码（至少4位）" style="width:100%;padding:10px;border:2px solid #ecf0f1;border-radius:8px;box-sizing:border-box;font-size:1rem">' +
+                '<div id="resetError" style="color:#e74c3c;font-size:0.85rem;margin:8px 0;display:none"></div>' +
+                '<div style="display:flex;gap:10px;margin-top:15px">' +
+                '<button onclick="this.closest(\'#reset-pw-modal\').remove()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#ecf0f1;color:#7f8c8d;font-size:1rem;cursor:pointer">取消</button>' +
+                '<button id="resetBtn" onclick="doResetPassword(\'' + userId + '\')" style="flex:1;padding:10px;border:none;border-radius:8px;background:linear-gradient(135deg,#e74c3c,#c0392b);color:white;font-weight:bold;font-size:1rem;cursor:pointer">重置</button>' +
+                '</div></div>';
+            document.body.appendChild(modal);
+            document.getElementById('resetNewPw').focus();
+        }
+
+        async function doResetPassword(userId) {
+            const pw = document.getElementById('resetNewPw').value;
+            const errEl = document.getElementById('resetError');
+            const btn = document.getElementById('resetBtn');
+            if (!pw || pw.length < 4) {
+                errEl.textContent = '密码至少4位';
+                errEl.style.display = 'block';
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = '重置中...';
+            try {
+                const token = VipSession.getToken();
+                const resp = await fetch(VIP_API_BASE + '/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ userId, newPassword: pw }),
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    document.getElementById('reset-pw-modal').remove();
+                    showToast('密码已重置！');
+                } else {
+                    errEl.textContent = data.error || '重置失败';
+                    errEl.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = '重置';
+                }
+            } catch(e) {
+                errEl.textContent = '网络错误';
+                errEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '重置';
+            }
         }
 
         function showToast(msg) {

@@ -108,7 +108,7 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="vip_common.js?v=4"></script>
+    <script src="vip_common.js?v=5"></script>
     <script src="../games/xiaobawang/games/frogjump.js"></script>
     <script src="../games/xiaobawang/games/carrace.js"></script>
     <script>
@@ -156,12 +156,7 @@
         }
 
         function init() {
-            try {
-                if (sessionStorage.getItem('vip_auth_jerry') !== '1') {
-                    window.location.href = 'index.html';
-                    return;
-                }
-            } catch(e) {}
+            if (!VipSession.requireAuth('jerry')) return;
             VipLogin.record(USER_ID);
             renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
             try { vipCloudSync(USER_ID); } catch(e) {}
