@@ -9,12 +9,15 @@ class QuizEngine {
         this.total = 0;
         this.streak = 0;
         this.currentAnswer = null;
+        this.currentQuestionId = null;
         this.timerInterval = null;
         this.timeLeft = 0;
         this.mode = null;
         this.onScoreChange = null;
+        this.onRoundComplete = null;
 
         this.roundSize = 10;
+        this.roundReward = 20;
         this.roundQuestions = [];
         this.roundIndex = 0;
         this.roundCorrect = 0;
@@ -117,6 +120,7 @@ class QuizEngine {
         const wrong = this.pick(this.allChars, 3, target.char);
         const options = this.shuffle([target, ...wrong]);
         this.currentAnswer = target.char;
+        this.currentQuestionId = target.char;
 
         const blankWord = word.split('').map(ch => ch === target.char ? '＿' : ch).join('');
 
@@ -165,6 +169,7 @@ class QuizEngine {
         const wrong = this.pick(this.allChars, 3, target.char);
         const options = this.shuffle([target, ...wrong]);
         this.currentAnswer = target.pinyin;
+        this.currentQuestionId = target.char;
 
         let html = '<div class="quiz-question">';
         html += this._roundProgress();
@@ -185,6 +190,7 @@ class QuizEngine {
         const wrong = this.pick(this.allChars, 3, target.char);
         const options = this.shuffle([target, ...wrong]);
         this.currentAnswer = target.char;
+        this.currentQuestionId = target.char;
 
         let html = '<div class="quiz-question">';
         html += this._roundProgress();
@@ -304,6 +310,7 @@ class QuizEngine {
         const wrong = this.pick(this.allChars, 3, target.char);
         const options = this.shuffle([target, ...wrong]);
         this.currentAnswer = target.pinyin;
+        this.currentQuestionId = target.char;
 
         let html = '<div class="quiz-question timed">';
         html += '<div class="timed-header">';
@@ -323,7 +330,9 @@ class QuizEngine {
 
     checkTimedAnswer(answer) {
         this.total++;
-        if (answer === this.currentAnswer) {
+        const correct = answer === this.currentAnswer;
+        this._recordAnswer(this.currentQuestionId, correct, answer, this.currentAnswer);
+        if (correct) {
             this.score++;
             this.streak++;
         } else {
@@ -372,6 +381,7 @@ class QuizEngine {
         const wrongChars = this.pick(this.allChars, 3, target.char).map(c => c.char);
         const options = this.shuffle([otherChar, ...wrongChars]);
         this.currentAnswer = otherChar;
+        this.currentQuestionId = target.char;
 
         let html = '<div class="quiz-question">';
         html += this._roundProgress();
@@ -394,6 +404,7 @@ class QuizEngine {
         const wrongWords = wrong.map(w => w.words[Math.floor(Math.random() * w.words.length)]);
         const options = this.shuffle([word, ...wrongWords]);
         this.currentAnswer = word;
+        this.currentQuestionId = target.char;
 
         let html = '<div class="quiz-question">';
         html += this._roundProgress();
@@ -420,10 +431,34 @@ class QuizEngine {
         return '<div style="font-size:0.75rem;color:#95a5a6;margin-bottom:8px;text-align:right">' + label + '</div>';
     }
 
+    // ── Per-answer recording ──
+    _recordAnswer(questionId, correct, userAnswer, correctAnswer) {
+        const entry = {
+            quizType: this.mode,
+            questionId: questionId,
+            correct: correct,
+            userAnswer: userAnswer,
+            correctAnswer: correctAnswer,
+            time: Date.now()
+        };
+        try {
+            const key = 'vip_answers_' + this.userId;
+            const stats = JSON.parse(localStorage.getItem(key) || '{}');
+            if (!stats[questionId]) stats[questionId] = { correct: 0, wrong: 0 };
+            if (correct) stats[questionId].correct++;
+            else stats[questionId].wrong++;
+            stats[questionId].lastSeen = Date.now();
+            localStorage.setItem(key, JSON.stringify(stats));
+        } catch(e) {}
+        _apiPost('/api/quiz-answers/' + this.userId, entry);
+    }
+
     // ── Round answer checking ──
     checkRoundAnswer(answer, targetChar) {
         this.total++;
         const correct = answer === this.currentAnswer;
+        const qid = this.currentQuestionId || targetChar;
+        this._recordAnswer(qid, correct, answer, this.currentAnswer);
 
         if (correct) {
             this.score++;
@@ -458,12 +493,49 @@ class QuizEngine {
         this.container.innerHTML = html;
     }
 
+    // ── Mark quiz type as done today ──
+    _markTypeDone(mode) {
+        const date = new Date().toISOString().slice(0, 10);
+        const localKey = 'vip_quiz_done_' + this.userId + '_' + date;
+        try {
+            const done = JSON.parse(localStorage.getItem(localKey) || '[]');
+            if (!done.includes(mode)) done.push(mode);
+            localStorage.setItem(localKey, JSON.stringify(done));
+        } catch(e) {}
+        _apiPost('/api/daily/' + this.userId, { type: 'quiz_done_' + mode, date: date, value: 1 });
+    }
+
+    static getTypeDoneToday(userId) {
+        const date = new Date().toISOString().slice(0, 10);
+        try {
+            return JSON.parse(localStorage.getItem('vip_quiz_done_' + userId + '_' + date) || '[]');
+        } catch(e) { return []; }
+    }
+
+    static syncTypeDoneFromCloud(userId, modes) {
+        const date = new Date().toISOString().slice(0, 10);
+        const localKey = 'vip_quiz_done_' + userId + '_' + date;
+        modes.forEach(mode => {
+            _apiGet('/api/daily/' + userId + '?type=quiz_done_' + mode + '&date=' + date).then(data => {
+                if (data && data.value > 0) {
+                    try {
+                        const done = JSON.parse(localStorage.getItem(localKey) || '[]');
+                        if (!done.includes(mode)) {
+                            done.push(mode);
+                            localStorage.setItem(localKey, JSON.stringify(done));
+                        }
+                    } catch(e) {}
+                }
+            });
+        });
+    }
+
     // ── Round result ──
     _showRoundResult() {
         const elapsed = Math.floor((Date.now() - this.roundStartTime) / 1000);
         const earned = this._getTodayEarned();
         const remaining = Math.max(0, this.dailyCap - earned);
-        const rawReward = this.roundCorrect * 2;
+        const rawReward = this.roundReward;
         const reward = Math.min(rawReward, remaining);
         const capped = rawReward > remaining;
 
@@ -472,6 +544,7 @@ class QuizEngine {
             this._addTodayEarned(reward);
         }
 
+        this._markTypeDone(this.mode);
         this._logRound(this.mode, elapsed, reward, this.roundCorrect, this.total);
 
         let html = '<div class="quiz-result correct">';
@@ -488,8 +561,7 @@ class QuizEngine {
             html += '<div style="color:#e67e22;font-size:0.85rem;margin:8px 0">今日赚钱已达上限（' + this.dailyCap + '文），可继续学习但不再获得铜钱</div>';
         }
         html += '<div style="font-size:0.8rem;color:#95a5a6;margin:5px 0">今日已赚：' + this._getTodayEarned() + '/' + this.dailyCap + '文</div>';
-        html += '<button class="quiz-btn" onclick="quiz.startRound(\'' + this.mode + '\')">再来一组</button>';
-        html += '<button class="quiz-btn secondary" onclick="showQuizMenu()">返回选择</button>';
+        html += '<button class="quiz-btn" onclick="showQuizMenu()">返回选择</button>';
         html += '</div>';
         this.container.innerHTML = html;
 
@@ -497,6 +569,7 @@ class QuizEngine {
             const bar = document.getElementById('currencyBar');
             if (bar) renderCurrencyBar(bar, this.userId);
         }
+        if (this.onRoundComplete) this.onRoundComplete(this.mode);
     }
 
     _logRound(mode, seconds, earned, correct, total) {
