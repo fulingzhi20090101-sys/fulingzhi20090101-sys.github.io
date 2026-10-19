@@ -88,6 +88,11 @@
         </div>
 
         <div class="card user-info">
+            <div class="section-title">📋 登录日志</div>
+            <div id="loginLog" style="font-size:0.85rem;color:#7f8c8d">加载中...</div>
+        </div>
+
+        <div class="card user-info">
             <div class="section-title">👥 用户管理</div>
             <div id="userDashboard"></div>
         </div>
@@ -127,6 +132,7 @@
             syncAdminDashboard();
             claimDailyAllowance();
             buildTransferUI();
+            loadLoginLog();
         }
 
         function claimDailyAllowance() {
@@ -434,6 +440,27 @@
                 btn.disabled = false;
                 btn.textContent = '重置';
             }
+        }
+
+        function loadLoginLog() {
+            _apiGet('/api/admin/login-log?limit=50').then(logs => {
+                const el = document.getElementById('loginLog');
+                if (!logs || !logs.length) { el.textContent = '暂无登录记录'; return; }
+                let html = '<table style="width:100%;border-collapse:collapse;font-size:0.8rem">';
+                html += '<tr style="border-bottom:2px solid #ecf0f1;text-align:left"><th style="padding:6px">用户</th><th style="padding:6px">时间</th><th style="padding:6px">设备</th></tr>';
+                logs.forEach(log => {
+                    const d = new Date(log.time);
+                    const timeStr = d.toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'}) + ' ' + d.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+                    html += '<tr style="border-bottom:1px solid #f5f5f5">' +
+                        '<td style="padding:6px;font-weight:bold">' + (log.name || log.userId) + '</td>' +
+                        '<td style="padding:6px">' + timeStr + '</td>' +
+                        '<td style="padding:6px">' + (log.device || '—') + '</td></tr>';
+                });
+                html += '</table>';
+                el.innerHTML = html;
+            }).catch(() => {
+                document.getElementById('loginLog').textContent = '加载失败';
+            });
         }
 
         function showToast(msg) {
