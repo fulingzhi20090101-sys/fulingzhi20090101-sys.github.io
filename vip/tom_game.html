@@ -11,6 +11,9 @@
         .header { background: white; padding: 12px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; }
         .header h1 { font-size: 1.2rem; }
         .header .back { color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+        .session-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px; background: linear-gradient(135deg, #1a1a2e, #302b63); color: white; font-size: 0.9rem; }
+        .session-bar .timer { color: #f1c40f; font-weight: bold; font-size: 1.1rem; }
+        .session-bar .timer.urgent { color: #e74c3c; }
         .currency-bar { display: flex; gap: 8px; justify-content: center; padding: 10px; background: linear-gradient(135deg, #fef9e7, #fff); flex-wrap: wrap; }
         .currency-item { font-size: 0.9rem; cursor: pointer; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.8); }
         .currency-item.gold { color: #d4a017; font-weight: bold; }
@@ -22,7 +25,6 @@
         .game-card .icon { font-size: 2.5rem; float: left; margin-right: 15px; }
         .game-card .title { font-size: 1.1rem; font-weight: bold; margin-bottom: 4px; }
         .game-card .desc { color: #7f8c8d; font-size: 0.85rem; }
-        .game-card .cost { color: var(--accent); font-size: 0.8rem; margin-top: 4px; font-weight: bold; }
         .time-select { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
         .time-select.active { display: flex; }
         .time-card { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 380px; width: 90%; }
@@ -47,6 +49,7 @@
         .game-over-card .score { font-size: 2rem; color: var(--accent); font-weight: bold; margin: 15px 0; }
         .game-over-card button { padding: 12px 28px; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; margin: 5px; }
         .btn-retry { background: var(--gold); color: white; }
+        .btn-switch { background: #3498db; color: white; }
         .btn-quit { background: #ecf0f1; color: #7f8c8d; }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
         .toast.show { opacity: 1; }
@@ -59,25 +62,25 @@
             <h1>🎮 Tom 的游戏</h1>
             <span></span>
         </div>
+        <div id="sessionBar" class="session-bar" style="display:none">
+            ⏱️ 剩余时间：<span class="timer" id="sessionTimer">--:--</span>
+        </div>
         <div id="currencyBar"></div>
         <div class="game-list">
-            <div class="game-card" onclick="selectGame('frogjump')">
+            <div class="game-card" onclick="playGame('frogjump')">
                 <div class="icon">🐸</div>
                 <div class="title">青蛙跳台</div>
                 <div class="desc">跳上平台，收集宝石！点屏幕或按空格跳跃。</div>
-                <div class="cost">选择游玩时间</div>
             </div>
-            <div class="game-card" onclick="selectGame('carrace')">
+            <div class="game-card" onclick="playGame('carrace')">
                 <div class="icon">🚗</div>
                 <div class="title">赛车竞速</div>
                 <div class="desc">躲开敌车！点屏幕左右或按←→换道。</div>
-                <div class="cost">选择游玩时间</div>
             </div>
-            <div class="game-card" onclick="selectGame('snake')">
+            <div class="game-card" onclick="playGame('snake')">
                 <div class="icon">🐍</div>
                 <div class="title">贪吃蛇</div>
                 <div class="desc">方向键或WASD控制，吃食物变长！数字键调速。</div>
-                <div class="cost">选择游玩时间</div>
             </div>
         </div>
     </div>
@@ -85,15 +88,16 @@
     <div class="time-select" id="timeSelect">
         <div class="time-card">
             <h3>⏱️ 选择游玩时间</h3>
+            <p style="color:#7f8c8d;font-size:0.85rem;margin-bottom:12px">选好时间后可以自由切换游戏</p>
             <div id="timeOptions"></div>
             <div class="time-info" id="timeInfo"></div>
-            <button class="time-cancel" onclick="cancelTimeSelect()">取消</button>
+            <button class="time-cancel" onclick="cancelTimeSelect()">取消返回</button>
         </div>
     </div>
 
     <div class="game-container" id="gameContainer">
         <div class="game-toolbar">
-            <button onclick="quitGame()">✕ 退出</button>
+            <button onclick="backToGameList()">← 换游戏</button>
             <span class="game-timer" id="gameTimer"></span>
             <span id="gameScore">得分: 0</span>
         </div>
@@ -107,7 +111,8 @@
             <p id="rewardMsg"></p>
             <div style="margin-top:20px">
                 <button class="btn-retry" id="retryBtn" onclick="retryGame()">再来一局</button>
-                <button class="btn-quit" onclick="backToMenu()">返回</button>
+                <button class="btn-switch" id="switchBtn" onclick="backToGameList()">换游戏</button>
+                <button class="btn-quit" onclick="endSession()">结束</button>
             </div>
         </div>
     </div>
@@ -122,10 +127,11 @@
         const USER_ID = 'tom';
         let currentGame = null;
         let currentGameKey = null;
-        let selectedDuration = 0;
-        let selectedCost = 0;
-        let gameTimerInterval = null;
-        let gameTimeLeft = 0;
+        let sessionDuration = 0;
+        let sessionCost = 0;
+        let sessionTimerInterval = null;
+        let sessionTimeLeft = 0;
+        let sessionActive = false;
 
         const TIME_OPTIONS = [
             { minutes: 1, baseCost: 10 },
@@ -168,10 +174,10 @@
             renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
             try { vipCloudSync(USER_ID); } catch(e) {}
             _syncGameTime();
+            showTimeSelect();
         }
 
-        function selectGame(gameKey) {
-            currentGameKey = gameKey;
+        function showTimeSelect() {
             const bal = VipCurrency.getBalance(USER_ID);
             const played = _getTodayGameMinutes();
             const mult = _getMultiplier();
@@ -185,7 +191,7 @@
                 const canAfford = bal.copper >= cost;
                 const cls = canAfford ? '' : ' disabled';
                 const costCls = mult > 1 ? ' expensive' : '';
-                html += '<div class="time-option' + cls + '" onclick="' + (canAfford ? 'confirmTime(' + opt.minutes + ',' + cost + ')' : '') + '">';
+                html += '<div class="time-option' + cls + '" onclick="' + (canAfford ? 'startSession(' + opt.minutes + ',' + cost + ')' : '') + '">';
                 html += '<span class="time-label">' + opt.minutes + '分钟</span>';
                 html += '<span class="time-cost' + costCls + '">' + cost + '文铜钱</span>';
                 html += '</div>';
@@ -200,55 +206,79 @@
         }
 
         function cancelTimeSelect() {
-            document.getElementById('timeSelect').classList.remove('active');
+            window.location.href = 'tom.html';
         }
 
-        function confirmTime(minutes, cost) {
+        function startSession(minutes, cost) {
             const result = VipCurrency.spendCopper(USER_ID, cost, '游戏' + minutes + '分钟');
-            if (!result) {
-                showToast('铜钱不够！');
-                return;
-            }
-            selectedDuration = minutes;
-            selectedCost = cost;
+            if (!result) { showToast('铜钱不够！'); return; }
+
+            sessionDuration = minutes;
+            sessionCost = cost;
+            sessionTimeLeft = minutes * 60;
+            sessionActive = true;
+
             renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
             document.getElementById('timeSelect').classList.remove('active');
-            launchGame(currentGameKey);
+            document.getElementById('sessionBar').style.display = 'flex';
+            updateSessionTimer();
+
+            VipTime.startTracking(USER_ID, 'game');
+
+            if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+            sessionTimerInterval = setInterval(() => {
+                sessionTimeLeft--;
+                updateSessionTimer();
+                if (document.getElementById('gameContainer').style.display === 'block') {
+                    updateGameTimer();
+                }
+                if (sessionTimeLeft <= 0) {
+                    clearInterval(sessionTimerInterval);
+                    sessionTimerInterval = null;
+                    sessionTimeUp();
+                }
+            }, 1000);
         }
 
-        function launchGame(gameKey) {
+        function updateSessionTimer() {
+            const m = Math.floor(sessionTimeLeft / 60);
+            const s = sessionTimeLeft % 60;
+            const el = document.getElementById('sessionTimer');
+            el.textContent = m + ':' + String(s).padStart(2, '0');
+            el.className = 'timer' + (sessionTimeLeft <= 10 ? ' urgent' : '');
+        }
+
+        function updateGameTimer() {
+            const m = Math.floor(sessionTimeLeft / 60);
+            const s = sessionTimeLeft % 60;
+            const el = document.getElementById('gameTimer');
+            el.textContent = '⏱ ' + m + ':' + String(s).padStart(2, '0');
+            el.style.color = sessionTimeLeft <= 10 ? '#e74c3c' : '#f1c40f';
+        }
+
+        function playGame(gameKey) {
+            if (!sessionActive) { showTimeSelect(); return; }
+            currentGameKey = gameKey;
             document.getElementById('menuView').style.display = 'none';
             document.getElementById('gameContainer').style.display = 'block';
             document.getElementById('gameScore').textContent = '得分: 0';
+            updateGameTimer();
+            launchCurrentGame();
+        }
 
-            gameTimeLeft = selectedDuration * 60;
-            updateTimerDisplay();
-
-            if (gameTimerInterval) clearInterval(gameTimerInterval);
-            gameTimerInterval = setInterval(() => {
-                gameTimeLeft--;
-                updateTimerDisplay();
-                if (gameTimeLeft <= 0) {
-                    clearInterval(gameTimerInterval);
-                    gameTimerInterval = null;
-                    timeUp();
-                }
-            }, 1000);
-
+        function launchCurrentGame() {
             const canvas = document.getElementById('gameCanvas');
             canvas.width = 800;
             canvas.height = 556;
 
-            VipTime.startTracking(USER_ID, 'game');
-
-            if (gameKey === 'frogjump') {
+            if (currentGameKey === 'frogjump') {
                 window.onFrogJumpScore = (s) => { document.getElementById('gameScore').textContent = '得分: ' + s; };
                 window.onFrogJumpOver = (s) => gameOver(s);
                 if (window.frogJumpInstance) window.frogJumpInstance.stop();
                 currentGame = new FrogJump(canvas);
                 window.frogJumpInstance = currentGame;
                 currentGame.start();
-            } else if (gameKey === 'carrace') {
+            } else if (currentGameKey === 'carrace') {
                 window._crLanes = 3;
                 window.onCarRaceScore = (s) => { document.getElementById('gameScore').textContent = '得分: ' + s; };
                 window.onCarRaceOver = (s) => gameOver(s);
@@ -256,7 +286,7 @@
                 currentGame = new CarRace(canvas, 3);
                 window.carRaceInstance = currentGame;
                 currentGame.start();
-            } else if (gameKey === 'snake') {
+            } else if (currentGameKey === 'snake') {
                 window.onSnakeScore = (s) => { document.getElementById('gameScore').textContent = '得分: ' + s; };
                 window.onSnakeOver = (s) => gameOver(s);
                 if (window.snakeInstance) window.snakeInstance.stop();
@@ -266,91 +296,64 @@
             }
         }
 
-        function updateTimerDisplay() {
-            const m = Math.floor(gameTimeLeft / 60);
-            const s = gameTimeLeft % 60;
-            const el = document.getElementById('gameTimer');
-            el.textContent = '⏱ ' + m + ':' + String(s).padStart(2, '0');
-            if (gameTimeLeft <= 10) el.style.color = '#e74c3c';
-            else el.style.color = '#f1c40f';
-        }
-
-        function timeUp() {
+        function sessionTimeUp() {
+            sessionActive = false;
             VipTime.stopTracking();
-            _addGameMinutes(selectedDuration);
+            _addGameMinutes(sessionDuration);
             if (currentGame) { currentGame.stop(); currentGame = null; }
+            document.getElementById('gameContainer').style.display = 'none';
+            document.getElementById('menuView').style.display = 'block';
+            document.getElementById('sessionBar').style.display = 'none';
+
             document.getElementById('gameOverTitle').textContent = '⏱️ 时间到！';
-            const scoreEl = document.getElementById('gameScore').textContent.replace('得分: ', '');
-            document.getElementById('finalScore').textContent = scoreEl;
-            document.getElementById('rewardMsg').textContent = '本次游玩 ' + selectedDuration + '分钟，消耗 ' + selectedCost + '文铜钱';
-            document.getElementById('retryBtn').style.display = 'inline-block';
+            document.getElementById('finalScore').textContent = '本次游玩 ' + sessionDuration + '分钟';
+            document.getElementById('rewardMsg').textContent = '消耗 ' + sessionCost + '文铜钱';
+            document.getElementById('retryBtn').style.display = 'none';
+            document.getElementById('switchBtn').style.display = 'none';
             document.getElementById('gameOverOverlay').classList.add('active');
+
+            renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
         }
 
         function gameOver(score) {
+            if (!sessionActive) return;
             document.getElementById('gameOverTitle').textContent = '游戏结束';
             document.getElementById('finalScore').textContent = score;
-            const remaining = Math.ceil(gameTimeLeft / 60);
-            document.getElementById('rewardMsg').textContent = '还剩 ' + remaining + ' 分钟，可以继续玩';
+            const remaining = Math.ceil(sessionTimeLeft / 60);
+            document.getElementById('rewardMsg').textContent = '还剩 ' + remaining + ' 分钟，可以继续';
             document.getElementById('retryBtn').style.display = 'inline-block';
+            document.getElementById('switchBtn').style.display = 'inline-block';
             document.getElementById('gameOverOverlay').classList.add('active');
         }
 
         function retryGame() {
             document.getElementById('gameOverOverlay').classList.remove('active');
+            if (!sessionActive) { endSession(); return; }
             if (currentGame) currentGame.stop();
-            if (gameTimeLeft <= 0) {
-                selectGame(currentGameKey);
-                document.getElementById('gameContainer').style.display = 'none';
-                document.getElementById('menuView').style.display = 'block';
-                return;
-            }
-            const canvas = document.getElementById('gameCanvas');
-            canvas.width = 800;
-            canvas.height = 556;
-
-            if (currentGameKey === 'frogjump') {
-                if (window.frogJumpInstance) window.frogJumpInstance.stop();
-                currentGame = new FrogJump(canvas);
-                window.frogJumpInstance = currentGame;
-                currentGame.start();
-            } else if (currentGameKey === 'carrace') {
-                if (window.carRaceInstance) window.carRaceInstance.stop();
-                currentGame = new CarRace(canvas, 3);
-                window.carRaceInstance = currentGame;
-                currentGame.start();
-            } else if (currentGameKey === 'snake') {
-                if (window.snakeInstance) window.snakeInstance.stop();
-                currentGame = new SnakeGame(canvas);
-                window.snakeInstance = currentGame;
-                currentGame.start();
-            }
+            launchCurrentGame();
         }
 
-        function quitGame() {
-            VipTime.stopTracking();
-            if (gameTimerInterval) { clearInterval(gameTimerInterval); gameTimerInterval = null; }
-            _addGameMinutes(Math.ceil((selectedDuration * 60 - gameTimeLeft) / 60));
+        function backToGameList() {
+            document.getElementById('gameOverOverlay').classList.remove('active');
             if (currentGame) { currentGame.stop(); currentGame = null; }
             document.getElementById('gameContainer').style.display = 'none';
-            document.getElementById('gameOverOverlay').classList.remove('active');
             document.getElementById('menuView').style.display = 'block';
-            renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
         }
 
-        function backToMenu() {
+        function endSession() {
             document.getElementById('gameOverOverlay').classList.remove('active');
-            if (gameTimeLeft > 0) {
-                document.getElementById('gameContainer').style.display = 'none';
-                document.getElementById('menuView').style.display = 'block';
-                VipTime.stopTracking();
-                if (gameTimerInterval) { clearInterval(gameTimerInterval); gameTimerInterval = null; }
-                _addGameMinutes(Math.ceil((selectedDuration * 60 - gameTimeLeft) / 60));
-                if (currentGame) { currentGame.stop(); currentGame = null; }
-                renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
-            } else {
-                quitGame();
+            VipTime.stopTracking();
+            if (sessionTimerInterval) { clearInterval(sessionTimerInterval); sessionTimerInterval = null; }
+            if (sessionActive) {
+                _addGameMinutes(Math.ceil((sessionDuration * 60 - sessionTimeLeft) / 60));
             }
+            if (currentGame) { currentGame.stop(); currentGame = null; }
+            sessionActive = false;
+            document.getElementById('gameContainer').style.display = 'none';
+            document.getElementById('menuView').style.display = 'block';
+            document.getElementById('sessionBar').style.display = 'none';
+            renderCurrencyBar(document.getElementById('currencyBar'), USER_ID);
+            window.location.href = 'tom.html';
         }
 
         function showToast(msg) {
