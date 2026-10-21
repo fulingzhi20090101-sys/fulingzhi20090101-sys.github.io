@@ -51,6 +51,7 @@ class MathQuizEngine {
         if (!topic) return;
         this.currentTopic = topic;
         this.mode = 'math_' + topicIndex;
+        this._roundAnswers = [];
         this.roundQuestions = this.shuffle(topic.questions).slice(0, this.roundSize);
         this.roundIndex = 0;
         this.roundCorrect = 0;
@@ -119,14 +120,8 @@ class MathQuizEngine {
     }
 
     _recordAnswer(questionId, correct, userAnswer, correctAnswer) {
-        const entry = {
-            quizType: this.mode,
-            questionId: questionId,
-            correct: correct,
-            userAnswer: userAnswer,
-            correctAnswer: correctAnswer,
-            time: Date.now()
-        };
+        if (!this._roundAnswers) this._roundAnswers = [];
+        this._roundAnswers.push({ questionId, correct, quizType: this.mode });
         try {
             const key = 'vip_answers_' + this.userId;
             const stats = JSON.parse(localStorage.getItem(key) || '{}');
@@ -136,7 +131,12 @@ class MathQuizEngine {
             stats[questionId].lastSeen = Date.now();
             localStorage.setItem(key, JSON.stringify(stats));
         } catch(e) {}
-        _apiPost('/api/quiz-answers/' + this.userId, entry);
+    }
+
+    _flushAnswers() {
+        if (!this._roundAnswers || this._roundAnswers.length === 0) return;
+        _apiPost('/api/quiz-answers/' + this.userId, { batch: this._roundAnswers });
+        this._roundAnswers = [];
     }
 
     _showFeedback(correct, message) {
@@ -179,6 +179,7 @@ class MathQuizEngine {
         }
 
         this._markTypeDone(this.mode);
+        this._flushAnswers();
 
         const entry = {
             mode: this.mode, seconds: elapsed, earned: reward,

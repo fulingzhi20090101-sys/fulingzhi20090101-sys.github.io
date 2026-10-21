@@ -79,6 +79,7 @@ class QuizEngine {
     // ── Start a round of 10 questions ──
     startRound(mode) {
         this.mode = mode;
+        this._roundAnswers = [];
         this.roundQuestions = this.shuffle(this.allChars).slice(0, this.roundSize);
         this.roundIndex = 0;
         this.roundCorrect = 0;
@@ -281,6 +282,7 @@ class QuizEngine {
     // ── Quiz Type 6: Timed challenge (standalone, not in rounds) ──
     timedChallenge() {
         this.mode = 'timed';
+        this._roundAnswers = [];
         this.score = 0;
         this.total = 0;
         this.timeLeft = 30;
@@ -364,6 +366,7 @@ class QuizEngine {
                 if (bar) renderCurrencyBar(bar, this.userId);
             }
         }
+        this._flushAnswers();
         this._logRound('限时挑战', Math.floor((Date.now() - (this.roundStartTime || Date.now())) / 1000), reward, this.score, this.total);
     }
 
@@ -431,16 +434,10 @@ class QuizEngine {
         return '<div style="font-size:0.75rem;color:#95a5a6;margin-bottom:8px;text-align:right">' + label + '</div>';
     }
 
-    // ── Per-answer recording ──
+    // ── Per-answer recording (local only, batched to server at round end) ──
     _recordAnswer(questionId, correct, userAnswer, correctAnswer) {
-        const entry = {
-            quizType: this.mode,
-            questionId: questionId,
-            correct: correct,
-            userAnswer: userAnswer,
-            correctAnswer: correctAnswer,
-            time: Date.now()
-        };
+        if (!this._roundAnswers) this._roundAnswers = [];
+        this._roundAnswers.push({ questionId, correct, quizType: this.mode });
         try {
             const key = 'vip_answers_' + this.userId;
             const stats = JSON.parse(localStorage.getItem(key) || '{}');
@@ -450,7 +447,12 @@ class QuizEngine {
             stats[questionId].lastSeen = Date.now();
             localStorage.setItem(key, JSON.stringify(stats));
         } catch(e) {}
-        _apiPost('/api/quiz-answers/' + this.userId, entry);
+    }
+
+    _flushAnswers() {
+        if (!this._roundAnswers || this._roundAnswers.length === 0) return;
+        _apiPost('/api/quiz-answers/' + this.userId, { batch: this._roundAnswers });
+        this._roundAnswers = [];
     }
 
     // ── Round answer checking ──
@@ -513,21 +515,8 @@ class QuizEngine {
     }
 
     static syncTypeDoneFromCloud(userId, modes) {
-        const date = new Date().toISOString().slice(0, 10);
-        const localKey = 'vip_quiz_done_' + userId + '_' + date;
-        modes.forEach(mode => {
-            _apiGet('/api/daily/' + userId + '?type=quiz_done_' + mode + '&date=' + date).then(data => {
-                if (data && data.value > 0) {
-                    try {
-                        const done = JSON.parse(localStorage.getItem(localKey) || '[]');
-                        if (!done.includes(mode)) {
-                            done.push(mode);
-                            localStorage.setItem(localKey, JSON.stringify(done));
-                        }
-                    } catch(e) {}
-                }
-            });
-        });
+        // Skip cloud sync to save KV reads — localStorage tracks daily done status reliably
+        // Cloud sync only needed if user switches devices mid-day (rare for kids)
     }
 
     // ── Round result ──
@@ -545,6 +534,7 @@ class QuizEngine {
         }
 
         this._markTypeDone(this.mode);
+        this._flushAnswers();
         this._logRound(this.mode, elapsed, reward, this.roundCorrect, this.total);
 
         let html = '<div class="quiz-result correct">';
