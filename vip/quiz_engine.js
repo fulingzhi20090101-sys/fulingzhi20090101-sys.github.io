@@ -495,36 +495,36 @@ class QuizEngine {
         this.container.innerHTML = html;
     }
 
-    // ── Mark quiz type as done today ──
-    _markTypeDone(mode) {
+    _incrementGroupsDone() {
         const date = new Date().toISOString().slice(0, 10);
-        const localKey = 'vip_quiz_done_' + this.userId + '_' + date;
+        const localKey = 'vip_groups_done_' + this.userId + '_' + date;
         try {
-            const done = JSON.parse(localStorage.getItem(localKey) || '[]');
-            if (!done.includes(mode)) done.push(mode);
-            localStorage.setItem(localKey, JSON.stringify(done));
+            const count = parseInt(localStorage.getItem(localKey) || '0', 10) + 1;
+            localStorage.setItem(localKey, String(count));
         } catch(e) {}
-        _apiPost('/api/daily/' + this.userId, { type: 'quiz_done_' + mode, date: date, value: 1 });
+        _apiPost('/api/daily/' + this.userId, { type: 'groups_done', date: date, value: (QuizEngine.getGroupsDoneToday(this.userId)) });
     }
 
-    static getTypeDoneToday(userId) {
+    static getGroupsDoneToday(userId) {
         const date = new Date().toISOString().slice(0, 10);
         try {
-            return JSON.parse(localStorage.getItem('vip_quiz_done_' + userId + '_' + date) || '[]');
-        } catch(e) { return []; }
+            return parseInt(localStorage.getItem('vip_groups_done_' + userId + '_' + date) || '0', 10);
+        } catch(e) { return 0; }
     }
 
-    static syncTypeDoneFromCloud(userId, modes) {
-        // Skip cloud sync to save KV reads — localStorage tracks daily done status reliably
-        // Cloud sync only needed if user switches devices mid-day (rare for kids)
+    static get dailyGroupLimit() { return 5; }
+
+    static canDoMore(userId) {
+        return QuizEngine.getGroupsDoneToday(userId) < QuizEngine.dailyGroupLimit;
     }
 
-    // ── Round result ──
     _showRoundResult() {
         const elapsed = Math.floor((Date.now() - this.roundStartTime) / 1000);
         const earned = this._getTodayEarned();
         const remaining = Math.max(0, this.dailyCap - earned);
-        const rawReward = this.roundReward;
+        const perfect = this.roundCorrect === this.roundSize && this.total === this.roundSize;
+        const perfectBonus = perfect ? 5 : 0;
+        const rawReward = this.roundReward + perfectBonus;
         const reward = Math.min(rawReward, remaining);
         const capped = rawReward > remaining;
 
@@ -533,10 +533,11 @@ class QuizEngine {
             this._addTodayEarned(reward);
         }
 
-        this._markTypeDone(this.mode);
+        this._incrementGroupsDone();
         this._flushAnswers();
         this._logRound(this.mode, elapsed, reward, this.roundCorrect, this.total);
 
+        const groupsDone = QuizEngine.getGroupsDoneToday(this.userId);
         let html = '<div class="quiz-result correct">';
         html += '<div class="result-icon">🎉</div>';
         html += '<h3>本组完成！</h3>';
@@ -544,13 +545,16 @@ class QuizEngine {
         html += '<div style="margin:10px 0;font-size:0.9rem;color:#7f8c8d">';
         html += '用时：' + formatSeconds(elapsed);
         html += '</div>';
+        if (perfect) {
+            html += '<div style="color:#27ae60;font-size:0.9rem;margin:8px 0;font-weight:bold">全对！额外+5铜钱</div>';
+        }
         if (reward > 0) {
             html += '<div class="result-msg">获得 ' + reward + ' 文铜钱！</div>';
         }
         if (capped) {
             html += '<div style="color:#e67e22;font-size:0.85rem;margin:8px 0">今日赚钱已达上限（' + this.dailyCap + '文），可继续学习但不再获得铜钱</div>';
         }
-        html += '<div style="font-size:0.8rem;color:#95a5a6;margin:5px 0">今日已赚：' + this._getTodayEarned() + '/' + this.dailyCap + '文</div>';
+        html += '<div style="font-size:0.8rem;color:#95a5a6;margin:5px 0">今日已完成：' + groupsDone + '/' + QuizEngine.dailyGroupLimit + ' 组</div>';
         html += '<button class="quiz-btn" onclick="showQuizMenu()">返回选择</button>';
         html += '</div>';
         this.container.innerHTML = html;

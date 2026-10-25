@@ -154,22 +154,13 @@ class MathQuizEngine {
         this.container.innerHTML = html;
     }
 
-    _markTypeDone(mode) {
-        const date = new Date().toISOString().slice(0, 10);
-        const localKey = 'vip_quiz_done_' + this.userId + '_' + date;
-        try {
-            const done = JSON.parse(localStorage.getItem(localKey) || '[]');
-            if (!done.includes(mode)) done.push(mode);
-            localStorage.setItem(localKey, JSON.stringify(done));
-        } catch(e) {}
-        _apiPost('/api/daily/' + this.userId, { type: 'quiz_done_' + mode, date: date, value: 1 });
-    }
-
     _showRoundResult() {
         const elapsed = Math.floor((Date.now() - this.roundStartTime) / 1000);
         const earned = this._getTodayEarned();
         const remaining = Math.max(0, this.dailyCap - earned);
-        const rawReward = this.roundReward;
+        const perfect = this.roundCorrect === this.roundSize && this.total === this.roundSize;
+        const perfectBonus = perfect ? 5 : 0;
+        const rawReward = this.roundReward + perfectBonus;
         const reward = Math.min(rawReward, remaining);
         const capped = rawReward > remaining;
 
@@ -178,7 +169,7 @@ class MathQuizEngine {
             this._addTodayEarned(reward);
         }
 
-        this._markTypeDone(this.mode);
+        this._incrementGroupsDone();
         this._flushAnswers();
 
         const entry = {
@@ -195,18 +186,23 @@ class MathQuizEngine {
         } catch(e) {}
         _apiPost('/api/quiz-log/' + this.userId, { mode: this.mode, correct: this.roundCorrect, total: this.total, seconds: elapsed, earned: reward });
 
+        const groupsDone = typeof QuizEngine !== 'undefined' ? QuizEngine.getGroupsDoneToday(this.userId) : 0;
         let html = '<div class="quiz-result correct">';
         html += '<div class="result-icon">🎉</div>';
-        html += '<h3>Round Complete!</h3>';
+        html += '<h3>本组完成！</h3>';
         html += '<div class="result-score">' + this.roundCorrect + ' / ' + this.roundSize + '</div>';
-        html += '<div style="margin:10px 0;font-size:0.9rem;color:#7f8c8d">Time: ' + formatSeconds(elapsed) + '</div>';
+        html += '<div style="margin:10px 0;font-size:0.9rem;color:#7f8c8d">用时：' + formatSeconds(elapsed) + '</div>';
+        if (perfect) {
+            html += '<div style="color:#27ae60;font-size:0.9rem;margin:8px 0;font-weight:bold">全对！额外+5铜钱</div>';
+        }
         if (reward > 0) {
-            html += '<div class="result-msg">Earned ' + reward + ' copper!</div>';
+            html += '<div class="result-msg">获得 ' + reward + ' 文铜钱！</div>';
         }
         if (capped) {
-            html += '<div style="color:#e67e22;font-size:0.85rem;margin:8px 0">Daily earning limit reached</div>';
+            html += '<div style="color:#e67e22;font-size:0.85rem;margin:8px 0">今日赚钱已达上限</div>';
         }
-        html += '<button class="quiz-btn" onclick="showQuizMenu()">Back to Menu</button>';
+        html += '<div style="font-size:0.8rem;color:#95a5a6;margin:5px 0">今日已完成：' + groupsDone + '/' + (typeof QuizEngine !== 'undefined' ? QuizEngine.dailyGroupLimit : 5) + ' 组</div>';
+        html += '<button class="quiz-btn" onclick="showQuizMenu()">返回选择</button>';
         html += '</div>';
         this.container.innerHTML = html;
 
@@ -219,6 +215,17 @@ class MathQuizEngine {
 
     _esc(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
     _escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    _incrementGroupsDone() {
+        const date = new Date().toISOString().slice(0, 10);
+        const localKey = 'vip_groups_done_' + this.userId + '_' + date;
+        try {
+            const count = parseInt(localStorage.getItem(localKey) || '0', 10) + 1;
+            localStorage.setItem(localKey, String(count));
+        } catch(e) {}
+        const total = typeof QuizEngine !== 'undefined' ? QuizEngine.getGroupsDoneToday(this.userId) : parseInt(localStorage.getItem(localKey) || '0', 10);
+        _apiPost('/api/daily/' + this.userId, { type: 'groups_done', date: date, value: total });
+    }
 
     _syncDailyEarned() {
         const date = new Date().toISOString().slice(0, 10);

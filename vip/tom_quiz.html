@@ -82,17 +82,15 @@
     <script src="vip_common.js?v=7"></script>
     <script src="chars_p1.js?v=3"></script>
     <script src="math_p1.js?v=1"></script>
-    <script src="quiz_engine.js?v=5"></script>
-    <script src="math_quiz_engine.js?v=1"></script>
+    <script src="riddles.js?v=1"></script>
+    <script src="quiz_engine.js?v=6"></script>
+    <script src="math_quiz_engine.js?v=2"></script>
+    <script src="riddle_engine.js?v=1"></script>
     <script>
         const USER_ID = 'tom';
-        let quiz, mathQuiz;
+        let quiz, mathQuiz, riddleEngine;
         let currentMode = null;
         let inQuiz = false;
-
-        const ALL_CHAR_MODES = ['listenChooseChar', 'charToPinyin', 'pinyinToChar', 'matchPairs', 'timedChallenge', 'formWord', 'wordMeaning'];
-        const ALL_MATH_MODES = MATH_P1.map((_, i) => 'math_' + i);
-        const ALL_MODES = [...ALL_CHAR_MODES, ...ALL_MATH_MODES];
 
         function init() {
             if (!VipSession.requireAuth('tom')) return;
@@ -115,7 +113,8 @@
             mathQuiz.onScoreChange = updateScore;
             mathQuiz.onRoundComplete = () => showQuizMenu();
 
-            QuizEngine.syncTypeDoneFromCloud(USER_ID, ALL_MODES);
+            riddleEngine = new RiddleEngine(RIDDLES, USER_ID, document.getElementById('quizArea'));
+
             showQuizMenu();
         }
 
@@ -131,19 +130,28 @@
             currentMode = null;
             inQuiz = false;
             if (quiz) quiz.stopTimer();
-            document.getElementById('scoreBar').textContent = '选择练习类型开始做题';
+            const groupsDone = QuizEngine.getGroupsDoneToday(USER_ID);
+            const groupLimit = QuizEngine.dailyGroupLimit;
+            const allDone = groupsDone >= groupLimit;
+            document.getElementById('scoreBar').textContent = '今日已完成 ' + groupsDone + '/' + groupLimit + ' 组';
             const area = document.getElementById('quizArea');
-            const done = QuizEngine.getTypeDoneToday(USER_ID);
 
             function mi(mode, icon, title, desc) {
-                const isDone = done.includes(mode);
-                return '<div class="quiz-menu-item' + (isDone ? ' done' : '') + '" onclick="startQuiz(\'' + mode + '\')">' +
+                return '<div class="quiz-menu-item' + (allDone ? ' done' : '') + '" onclick="startQuiz(\'' + mode + '\')">' +
                     '<div class="icon">' + icon + '</div><div class="title">' + title + '</div>' +
                     '<div class="desc">' + desc + '</div>' +
-                    (isDone ? '<div class="done-badge">✅ 今日已完成</div>' : '') + '</div>';
+                    (allDone ? '<div class="done-badge">✅ 今日已完成</div>' : '') + '</div>';
             }
 
-            let html = '<div class="section-label">📖 识字练习</div><div class="quiz-menu">';
+            let html = '';
+
+            if (riddleEngine) {
+                html += riddleEngine.showRiddleMenu();
+            }
+
+            html += '<div class="section-label">📖 识字练习</div>';
+            if (allDone) html += '<div style="font-size:0.8rem;color:#27ae60;margin-bottom:8px;padding:0 4px">今日5组已完成，明天再来！</div>';
+            html += '<div class="quiz-menu">';
             html += mi('listenChooseChar', '🎧', '听词选字', '听词语选汉字');
             html += mi('charToPinyin', '📝', '看字选拼音', '看汉字选拼音');
             html += mi('pinyinToChar', '🔤', '看拼音选字', '看拼音选汉字');
@@ -163,8 +171,7 @@
         }
 
         function startQuiz(mode) {
-            const done = QuizEngine.getTypeDoneToday(USER_ID);
-            if (done.includes(mode)) return;
+            if (!QuizEngine.canDoMore(USER_ID)) return;
 
             currentMode = mode;
             inQuiz = true;
