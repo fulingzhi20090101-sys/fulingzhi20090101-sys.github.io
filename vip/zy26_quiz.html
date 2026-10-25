@@ -80,10 +80,12 @@
 
     <script src="vip_common.js?v=7"></script>
     <script src="chars_p5.js?v=3"></script>
+    <script src="riddles.js?v=1"></script>
     <script src="quiz_engine.js?v=6"></script>
+    <script src="riddle_engine.js?v=1"></script>
     <script>
         const USER_ID = 'zy26';
-        let quiz;
+        let quiz, riddleEngine;
         let currentMode = null;
         let inQuiz = false;
 
@@ -103,6 +105,7 @@
             quiz = new QuizEngine(CHARS_P5, USER_ID, document.getElementById('quizArea'));
             quiz.onScoreChange = updateScore;
             quiz.onRoundComplete = () => showQuizMenu();
+            riddleEngine = new RiddleEngine(RIDDLES, USER_ID, document.getElementById('quizArea'));
             showQuizMenu();
         }
 
@@ -132,6 +135,7 @@
             }
 
             let html = '';
+            if (riddleEngine) html += riddleEngine.showRiddleMenu();
             if (allDone) html += '<div style="font-size:0.8rem;color:#27ae60;margin-bottom:8px;padding:0 4px">今日5组已完成，明天再来！</div>';
             html += '<div class="quiz-menu">';
             html += mi('listenChooseChar', '🎧', '听词选字', '听词语选汉字');
