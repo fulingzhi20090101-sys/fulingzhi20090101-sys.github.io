@@ -34,6 +34,7 @@
         .modal input { width: 100%; padding: 12px 16px; border: 2px solid #ecf0f1; border-radius: 10px; font-size: 1rem; box-sizing: border-box; outline: none; transition: border-color 0.3s; }
         .modal input:focus { border-color: var(--gold); }
         .modal .error { color: #e74c3c; font-size: 0.85rem; margin-top: 8px; display: none; }
+        .modal .info { color: #2980b9; font-size: 0.85rem; margin-top: 8px; display: none; }
         .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
         .modal-buttons button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s; }
         .btn-login { background: linear-gradient(135deg, var(--gold), #f39c12); color: white; }
@@ -41,6 +42,14 @@
         .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-cancel { background: #ecf0f1; color: #7f8c8d; }
         .btn-cancel:hover { background: #dfe6e9; }
+        .btn-call { background: linear-gradient(135deg, #3498db, #2980b9); color: white; }
+        .btn-call:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(52,152,219,0.4); }
+        .btn-call:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+        .divider { display: flex; align-items: center; gap: 10px; margin: 15px 0; color: #bdc3c7; font-size: 0.85rem; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #ecf0f1; }
+        .poll-status { margin-top: 12px; padding: 12px; background: #eaf6fd; border-radius: 10px; text-align: center; display: none; }
+        .poll-status .countdown { font-size: 1.5rem; font-weight: bold; color: #2980b9; }
+        .poll-status .poll-msg { font-size: 0.85rem; color: #7f8c8d; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -74,13 +83,20 @@
         <div class="modal">
             <div class="modal-avatar" id="modalAvatar"></div>
             <h2 id="modalName"></h2>
-            <p class="hint">请输入密码进入专属空间</p>
+            <p class="hint">选择登录方式</p>
             <input type="password" id="passwordInput" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()">
             <div class="error" id="errorMsg">密码错误，请重试</div>
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="hideLogin()">取消</button>
-                <button class="btn-login" id="loginBtn" onclick="doLogin()">登录</button>
+                <button class="btn-login" id="loginBtn" onclick="doLogin()">密码登录</button>
             </div>
+            <div class="divider">或</div>
+            <button class="btn-call" id="callBtn" onclick="doCallLogin()" style="width:100%;padding:12px;border:none;border-radius:10px;font-size:1rem;font-weight:bold;cursor:pointer">📞 呼叫管理员登录</button>
+            <div class="poll-status" id="pollStatus">
+                <div class="countdown" id="pollCountdown">300</div>
+                <div class="poll-msg">等待管理员审批中...</div>
+            </div>
+            <div class="info" id="infoMsg"></div>
         </div>
     </div>
 
@@ -94,6 +110,9 @@
         };
         let currentUser = null;
 
+        let pollInterval = null;
+        let countdownInterval = null;
+
         function showLogin(uid) {
             currentUser = uid;
             const u = users[uid];
@@ -101,8 +120,12 @@
             document.getElementById('modalName').textContent = u.name;
             document.getElementById('passwordInput').value = '';
             document.getElementById('errorMsg').style.display = 'none';
+            document.getElementById('infoMsg').style.display = 'none';
             document.getElementById('loginBtn').disabled = false;
-            document.getElementById('loginBtn').textContent = '登录';
+            document.getElementById('loginBtn').textContent = '密码登录';
+            document.getElementById('callBtn').disabled = false;
+            document.getElementById('callBtn').textContent = '📞 呼叫管理员登录';
+            document.getElementById('pollStatus').style.display = 'none';
             document.getElementById('loginModal').classList.add('active');
             setTimeout(() => document.getElementById('passwordInput').focus(), 100);
         }
@@ -110,6 +133,8 @@
         function hideLogin() {
             document.getElementById('loginModal').classList.remove('active');
             currentUser = null;
+            if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
         }
 
         async function doLogin() {
@@ -164,6 +189,103 @@
                 errEl.style.display = 'block';
                 btn.disabled = false;
                 btn.textContent = '登录';
+            }
+        }
+
+        async function doCallLogin() {
+            const callBtn = document.getElementById('callBtn');
+            const errEl = document.getElementById('errorMsg');
+            const infoEl = document.getElementById('infoMsg');
+            const pollStatusEl = document.getElementById('pollStatus');
+            const countdownEl = document.getElementById('pollCountdown');
+
+            callBtn.disabled = true;
+            callBtn.textContent = '发送中...';
+            errEl.style.display = 'none';
+            infoEl.style.display = 'none';
+
+            const requestUrl = (API || window.location.origin) + '/api/auth/request-login';
+            try {
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 8000);
+                const resp = await fetch(requestUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser }),
+                    signal: ctrl.signal,
+                });
+                clearTimeout(timer);
+                const data = await resp.json();
+
+                if (!data.ok || !data.token) {
+                    errEl.textContent = data.error || '请求失败';
+                    errEl.style.display = 'block';
+                    callBtn.disabled = false;
+                    callBtn.textContent = '📞 呼叫管理员登录';
+                    return;
+                }
+
+                callBtn.textContent = '⏳ 已发送，等待审批';
+                pollStatusEl.style.display = 'block';
+                let secondsLeft = 300;
+                countdownEl.textContent = secondsLeft;
+
+                countdownInterval = setInterval(() => {
+                    secondsLeft--;
+                    countdownEl.textContent = secondsLeft;
+                    if (secondsLeft <= 0) {
+                        clearInterval(countdownInterval); countdownInterval = null;
+                        clearInterval(pollInterval); pollInterval = null;
+                        pollStatusEl.style.display = 'none';
+                        errEl.textContent = '请求已过期，请重试';
+                        errEl.style.display = 'block';
+                        callBtn.disabled = false;
+                        callBtn.textContent = '📞 呼叫管理员登录';
+                    }
+                }, 1000);
+
+                const pollUrl = (API || window.location.origin) + '/api/auth/poll/' + data.token;
+                pollInterval = setInterval(async () => {
+                    try {
+                        const pr = await fetch(pollUrl);
+                        const pd = await pr.json();
+
+                        if (pd.status === 'approved' && pd.sessionToken) {
+                            clearInterval(pollInterval); pollInterval = null;
+                            clearInterval(countdownInterval); countdownInterval = null;
+                            try {
+                                sessionStorage.setItem('vip_session', JSON.stringify({
+                                    token: pd.sessionToken,
+                                    userId: pd.userId,
+                                    name: pd.name,
+                                }));
+                            } catch(e) {}
+                            window.location.href = users[currentUser].page;
+                        } else if (pd.status === 'rejected') {
+                            clearInterval(pollInterval); pollInterval = null;
+                            clearInterval(countdownInterval); countdownInterval = null;
+                            pollStatusEl.style.display = 'none';
+                            errEl.textContent = '管理员拒绝了登录请求';
+                            errEl.style.display = 'block';
+                            callBtn.disabled = false;
+                            callBtn.textContent = '📞 呼叫管理员登录';
+                        } else if (pd.status === 'expired') {
+                            clearInterval(pollInterval); pollInterval = null;
+                            clearInterval(countdownInterval); countdownInterval = null;
+                            pollStatusEl.style.display = 'none';
+                            errEl.textContent = '请求已过期，请重试';
+                            errEl.style.display = 'block';
+                            callBtn.disabled = false;
+                            callBtn.textContent = '📞 呼叫管理员登录';
+                        }
+                    } catch(e) {}
+                }, 3000);
+
+            } catch(e) {
+                errEl.textContent = e.name === 'AbortError' ? '请求超时' : '网络错误: ' + e.message;
+                errEl.style.display = 'block';
+                callBtn.disabled = false;
+                callBtn.textContent = '📞 呼叫管理员登录';
             }
         }
 
