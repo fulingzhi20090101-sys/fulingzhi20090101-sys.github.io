@@ -10,36 +10,31 @@ class QuizEngine {
         this.streak = 0;
         this.currentAnswer = null;
         this.currentQuestionId = null;
-        this.timerInterval = null;
-        this.timeLeft = 0;
         this.mode = null;
         this.onScoreChange = null;
         this.onRoundComplete = null;
 
         this.roundSize = 10;
-        this.roundReward = 20;
         this.roundQuestions = [];
         this.roundIndex = 0;
         this.roundCorrect = 0;
+        this.firstTryCorrect = 0;
         this.wrongQueue = [];
+        this._isRetry = false;
+        this._currentQuestion = null;
         this.roundStartTime = 0;
         this.dailyCap = 150;
         this._syncDailyEarned();
     }
 
     _todayKey() { return 'vip_daily_earned_' + this.userId + '_' + new Date().toISOString().slice(0, 10); }
-
-    _getTodayEarned() {
-        try { return parseInt(localStorage.getItem(this._todayKey()) || '0', 10); } catch(e) { return 0; }
-    }
-
+    _getTodayEarned() { try { return parseInt(localStorage.getItem(this._todayKey()) || '0', 10); } catch(e) { return 0; } }
     _addTodayEarned(amount) {
         const newVal = this._getTodayEarned() + amount;
         try { localStorage.setItem(this._todayKey(), String(newVal)); } catch(e) {}
         const date = new Date().toISOString().slice(0, 10);
         _apiPost('/api/daily/' + this.userId, { type: 'quiz_earned', date: date, value: newVal });
     }
-
     _syncDailyEarned() {
         const date = new Date().toISOString().slice(0, 10);
         _apiGet('/api/daily/' + this.userId + '?type=quiz_earned&date=' + date).then(data => {
@@ -48,7 +43,6 @@ class QuizEngine {
             }
         });
     }
-
     _canEarnMore() { return this._getTodayEarned() < this.dailyCap; }
 
     shuffle(arr) {
@@ -76,28 +70,80 @@ class QuizEngine {
         speechSynthesis.speak(u);
     }
 
-    // ── Start a round of 10 questions ──
+    // ── Per-type daily tracking ──
+    static _typeDoneKey(userId) {
+        return 'vip_type_done_' + userId + '_' + new Date().toISOString().slice(0, 10);
+    }
+
+    _markTypeDone(type) {
+        try {
+            const key = QuizEngine._typeDoneKey(this.userId);
+            const done = JSON.parse(localStorage.getItem(key) || '{}');
+            done[type] = true;
+            localStorage.setItem(key, JSON.stringify(done));
+        } catch(e) {}
+        const date = new Date().toISOString().slice(0, 10);
+        _apiPost('/api/daily/' + this.userId, { type: 'type_done_' + type, date: date, value: true });
+    }
+
+    static isTypeDoneToday(userId, type) {
+        try {
+            const key = QuizEngine._typeDoneKey(userId);
+            const done = JSON.parse(localStorage.getItem(key) || '{}');
+            return !!done[type];
+        } catch(e) { return false; }
+    }
+
+    static getAllTypesDone(userId) {
+        try {
+            const key = QuizEngine._typeDoneKey(userId);
+            return JSON.parse(localStorage.getItem(key) || '{}');
+        } catch(e) { return {}; }
+    }
+
+    static get chineseTypes() {
+        return ['wordMeaning', 'matchPairs', 'charToPinyin', 'pinyinToChar'];
+    }
+
+    static chineseTypesDoneCount(userId) {
+        const done = QuizEngine.getAllTypesDone(userId);
+        return QuizEngine.chineseTypes.filter(t => done[t]).length;
+    }
+
+    // ── Start a round ──
     startRound(mode) {
         this.mode = mode;
         this._roundAnswers = [];
+        this.roundSize = (mode === 'matchPairs') ? 5 : 10;
         this.roundQuestions = this.shuffle(this.allChars).slice(0, this.roundSize);
         this.roundIndex = 0;
         this.roundCorrect = 0;
+        this.firstTryCorrect = 0;
         this.wrongQueue = [];
+        this._isRetry = false;
+        this._currentQuestion = null;
         this.score = 0;
         this.total = 0;
         this.streak = 0;
         this.roundStartTime = Date.now();
         if (this.onScoreChange) this.onScoreChange(this.score, this.total);
-        this._nextRoundQuestion();
+
+        if (mode === 'matchPairs') {
+            this._startMatchRound();
+        } else {
+            this._nextRoundQuestion();
+        }
     }
 
     _nextRoundQuestion() {
         if (this.roundIndex < this.roundQuestions.length) {
-            this._generateQuestion(this.mode, this.roundQuestions[this.roundIndex]);
+            this._isRetry = false;
+            this._currentQuestion = this.roundQuestions[this.roundIndex];
+            this._generateQuestion(this.mode, this._currentQuestion);
         } else if (this.wrongQueue.length > 0) {
-            const nextWrong = this.wrongQueue.shift();
-            this._generateQuestion(this.mode, nextWrong);
+            this._isRetry = true;
+            this._currentQuestion = this.wrongQueue.shift();
+            this._generateQuestion(this.mode, this._currentQuestion);
         } else {
             this._showRoundResult();
         }
@@ -105,67 +151,14 @@ class QuizEngine {
 
     _generateQuestion(mode, target) {
         switch (mode) {
-            case 'listenChooseChar': this._listenChooseChar(target); break;
-            case 'listenFillBlank': this._listenFillBlank(target); break;
             case 'charToPinyin': this._charToPinyin(target); break;
             case 'pinyinToChar': this._pinyinToChar(target); break;
-            case 'formWord': this._formWord(target); break;
             case 'wordMeaning': this._wordMeaning(target); break;
             default: this._charToPinyin(target);
         }
     }
 
-    // ── Quiz Type 1: Listen and choose character ──
-    _listenChooseChar(target) {
-        const word = target.words[Math.floor(Math.random() * target.words.length)];
-        const wrong = this.pick(this.allChars, 3, target.char);
-        const options = this.shuffle([target, ...wrong]);
-        this.currentAnswer = target.char;
-        this.currentQuestionId = target.char;
-
-        const blankWord = word.split('').map(ch => ch === target.char ? '＿' : ch).join('');
-
-        let html = '<div class="quiz-question">';
-        html += this._roundProgress();
-        html += '<div class="quiz-type-label">🎧 听词选字</div>';
-        html += '<div class="quiz-prompt">听一听，选出空缺的字</div>';
-        html += '<button class="speak-btn" onclick="quiz.speak(\'' + this._esc(word) + '\', 0.7)">🔊 再听一次</button>';
-        html += '<div class="quiz-target-word">' + blankWord + '</div>';
-        html += '<div class="quiz-options">';
-        options.forEach(o => {
-            html += '<button class="quiz-option" onclick="quiz.checkRoundAnswer(\'' + this._esc(o.char) + '\', \'' + this._esc(target.char) + '\')">' + o.char + '</button>';
-        });
-        html += '</div></div>';
-
-        this.container.innerHTML = html;
-        setTimeout(() => this.speak(word, 0.7), 300);
-    }
-
-    // ── Quiz Type 2: Listen and fill blank ──
-    _listenFillBlank(target) {
-        const word = target.words[Math.floor(Math.random() * target.words.length)];
-        const blankWord = word.replace(target.char, '＿');
-        const wrong = this.pick(this.allChars, 3, target.char);
-        const options = this.shuffle([target, ...wrong]);
-        this.currentAnswer = target.char;
-
-        let html = '<div class="quiz-question">';
-        html += this._roundProgress();
-        html += '<div class="quiz-type-label">🔊 听句填空</div>';
-        html += '<div class="quiz-prompt">听词语，选出空缺的字</div>';
-        html += '<button class="speak-btn" onclick="quiz.speak(\'' + this._esc(word) + '\', 0.7)">🔊 再听一次</button>';
-        html += '<div class="quiz-target-word">' + blankWord + '</div>';
-        html += '<div class="quiz-options">';
-        options.forEach(o => {
-            html += '<button class="quiz-option" onclick="quiz.checkRoundAnswer(\'' + this._esc(o.char) + '\', \'' + this._esc(target.char) + '\')">' + o.char + '</button>';
-        });
-        html += '</div></div>';
-
-        this.container.innerHTML = html;
-        setTimeout(() => this.speak(word, 0.7), 300);
-    }
-
-    // ── Quiz Type 3: See character, choose pinyin ──
+    // ── See character, choose pinyin ──
     _charToPinyin(target) {
         const wrong = this.pick(this.allChars, 3, target.char);
         const options = this.shuffle([target, ...wrong]);
@@ -179,14 +172,13 @@ class QuizEngine {
         html += '<div class="quiz-big-char">' + target.char + '</div>';
         html += '<div class="quiz-options pinyin-options">';
         options.forEach(o => {
-            html += '<button class="quiz-option pinyin" onclick="quiz.checkRoundAnswer(\'' + this._esc(o.pinyin) + '\', \'' + this._esc(target.char) + '\')">' + o.pinyin + '</button>';
+            html += '<button class="quiz-option pinyin" onclick="quiz.checkRoundAnswer(\'' + this._esc(o.pinyin) + '\')">' + o.pinyin + '</button>';
         });
         html += '</div></div>';
-
         this.container.innerHTML = html;
     }
 
-    // ── Quiz Type 4: See pinyin, choose character ──
+    // ── See pinyin, choose character ──
     _pinyinToChar(target) {
         const wrong = this.pick(this.allChars, 3, target.char);
         const options = this.shuffle([target, ...wrong]);
@@ -200,207 +192,13 @@ class QuizEngine {
         html += '<div class="quiz-big-pinyin">' + target.pinyin + '</div>';
         html += '<div class="quiz-options">';
         options.forEach(o => {
-            html += '<button class="quiz-option" onclick="quiz.checkRoundAnswer(\'' + this._esc(o.char) + '\', \'' + this._esc(target.char) + '\')">' + o.char + '</button>';
+            html += '<button class="quiz-option" onclick="quiz.checkRoundAnswer(\'' + this._esc(o.char) + '\')">' + o.char + '</button>';
         });
         html += '</div></div>';
-
         this.container.innerHTML = html;
     }
 
-    // ── Quiz Type 5: Match pairs (standalone, not in rounds) ──
-    matchPairs() {
-        this.mode = 'match';
-        const selected = this.shuffle(this.allChars).slice(0, 4);
-        const charButtons = this.shuffle([...selected]);
-        const pinyinButtons = this.shuffle([...selected]);
-
-        this._matchState = {
-            pairs: selected,
-            matched: [],
-            selectedChar: null,
-        };
-
-        let html = '<div class="quiz-question">';
-        html += '<div class="quiz-type-label">🧩 汉字连连看</div>';
-        html += '<div class="quiz-prompt">点击汉字和对应拼音配对</div>';
-        html += '<div class="match-grid">';
-        html += '<div class="match-col">';
-        charButtons.forEach(c => {
-            html += '<button class="match-btn match-card char-btn" data-char="' + c.char + '" onclick="quiz.matchClick(this, \'char\', \'' + this._esc(c.char) + '\')">' + c.char + '</button>';
-        });
-        html += '</div>';
-        html += '<div class="match-col">';
-        pinyinButtons.forEach(c => {
-            html += '<button class="match-btn match-card pinyin-btn" data-pinyin="' + c.pinyin + '" onclick="quiz.matchClick(this, \'pinyin\', \'' + this._esc(c.pinyin) + '\')">' + c.pinyin + '</button>';
-        });
-        html += '</div>';
-        html += '</div></div>';
-
-        this.container.innerHTML = html;
-    }
-
-    matchClick(btn, type, value) {
-        const state = this._matchState;
-        if (!state) return;
-
-        if (type === 'char') {
-            document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            state.selectedChar = value;
-        } else if (type === 'pinyin' && state.selectedChar) {
-            const pair = state.pairs.find(p => p.char === state.selectedChar && p.pinyin === value);
-            if (pair) {
-                state.matched.push(pair.char);
-                document.querySelector('.char-btn[data-char="' + state.selectedChar + '"]').classList.add('matched');
-                btn.classList.add('matched');
-                document.querySelector('.char-btn[data-char="' + state.selectedChar + '"]').disabled = true;
-                btn.disabled = true;
-                state.selectedChar = null;
-
-                if (state.matched.length === state.pairs.length) {
-                    this.score += 4;
-                    this.total += 4;
-                    if (this.onScoreChange) this.onScoreChange(this.score, this.total);
-                    const reward = this._canEarnMore() ? 4 : 0;
-                    if (reward > 0) {
-                        if (typeof VipCurrency !== 'undefined') VipCurrency.addCopper(this.userId, reward, '连连看配对');
-                        this._addTodayEarned(reward);
-                    }
-                    setTimeout(() => this.showResult(true, reward > 0 ? '全部配对成功！+' + reward + '文' : '全部配对成功！（今日已达上限）'), 500);
-                }
-            } else {
-                btn.classList.add('wrong');
-                setTimeout(() => btn.classList.remove('wrong'), 400);
-                this.total++;
-                if (this.onScoreChange) this.onScoreChange(this.score, this.total);
-            }
-            document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('selected'));
-            state.selectedChar = null;
-        }
-    }
-
-    // ── Quiz Type 6: Timed challenge (standalone, not in rounds) ──
-    timedChallenge() {
-        this.mode = 'timed';
-        this._roundAnswers = [];
-        this.score = 0;
-        this.total = 0;
-        this.timeLeft = 30;
-
-        if (this.timerInterval) clearInterval(this.timerInterval);
-        this.timerInterval = setInterval(() => {
-            this.timeLeft--;
-            const timerEl = document.getElementById('timedTimer');
-            if (timerEl) timerEl.textContent = this.timeLeft + '秒';
-            if (this.timeLeft <= 0) {
-                clearInterval(this.timerInterval);
-                this.timerInterval = null;
-                const earned = this._getTodayEarned();
-                const remaining = Math.max(0, this.dailyCap - earned);
-                const rawReward = this.score * 2;
-                const reward = Math.min(rawReward, remaining);
-                this.showTimedResult(reward, rawReward > reward);
-            }
-        }, 1000);
-
-        this._nextTimedQuestion();
-    }
-
-    _nextTimedQuestion() {
-        if (this.timeLeft <= 0) return;
-        const target = this.allChars[Math.floor(Math.random() * this.allChars.length)];
-        const wrong = this.pick(this.allChars, 3, target.char);
-        const options = this.shuffle([target, ...wrong]);
-        this.currentAnswer = target.pinyin;
-        this.currentQuestionId = target.char;
-
-        let html = '<div class="quiz-question timed">';
-        html += '<div class="timed-header">';
-        html += '<span class="quiz-type-label">⚡ 限时挑战</span>';
-        html += '<span id="timedTimer" class="timed-timer">' + this.timeLeft + '秒</span>';
-        html += '<span class="timed-score">✓' + this.score + '</span>';
-        html += '</div>';
-        html += '<div class="quiz-big-char">' + target.char + '</div>';
-        html += '<div class="quiz-options pinyin-options">';
-        options.forEach(o => {
-            html += '<button class="quiz-option pinyin" onclick="quiz.checkTimedAnswer(\'' + this._esc(o.pinyin) + '\')">' + o.pinyin + '</button>';
-        });
-        html += '</div></div>';
-
-        this.container.innerHTML = html;
-    }
-
-    checkTimedAnswer(answer) {
-        this.total++;
-        const correct = answer === this.currentAnswer;
-        this._recordAnswer(this.currentQuestionId, correct, answer, this.currentAnswer);
-        if (correct) {
-            this.score++;
-            this.streak++;
-        } else {
-            this.streak = 0;
-        }
-        if (this.onScoreChange) this.onScoreChange(this.score, this.total);
-        this._nextTimedQuestion();
-    }
-
-    showTimedResult(reward, capped) {
-        let html = '<div class="quiz-result">';
-        html += '<div class="result-icon">⚡</div>';
-        html += '<h3>限时挑战结束！</h3>';
-        html += '<div class="result-score">' + this.score + ' / ' + this.total + '</div>';
-        html += '<div class="result-msg">答对 ' + this.score + ' 题';
-        if (reward > 0) html += '，获得 ' + reward + ' 文铜钱！';
-        if (capped) html += '<br><span style="color:#e67e22;font-size:0.85rem">今日赚钱已达上限，可继续学习但不再获得铜钱</span>';
-        html += '</div>';
-        html += '<button class="quiz-btn" onclick="quiz.timedChallenge()">再来一次</button>';
-        html += '<button class="quiz-btn secondary" onclick="showQuizMenu()">返回选择</button>';
-        html += '</div>';
-        this.container.innerHTML = html;
-
-        if (reward > 0 && typeof VipCurrency !== 'undefined') {
-            VipCurrency.addCopper(this.userId, reward, '限时挑战答对' + this.score + '题');
-            this._addTodayEarned(reward);
-            if (typeof renderCurrencyBar === 'function') {
-                const bar = document.getElementById('currencyBar');
-                if (bar) renderCurrencyBar(bar, this.userId);
-            }
-        }
-        this._flushAnswers();
-        this._logRound('限时挑战', Math.floor((Date.now() - (this.roundStartTime || Date.now())) / 1000), reward, this.score, this.total);
-    }
-
-    // ── Quiz Type 7: Form words ──
-    _formWord(target) {
-        const charsWithWords = this.allChars.filter(c => c.words && c.words.length > 0);
-        if (!target.words || target.words.length === 0) {
-            target = charsWithWords[Math.floor(Math.random() * charsWithWords.length)];
-        }
-        const word = target.words[Math.floor(Math.random() * target.words.length)];
-        const otherChar = word.replace(target.char, '');
-
-        if (!otherChar) { this._charToPinyin(target); return; }
-
-        const wrongChars = this.pick(this.allChars, 3, target.char).map(c => c.char);
-        const options = this.shuffle([otherChar, ...wrongChars]);
-        this.currentAnswer = otherChar;
-        this.currentQuestionId = target.char;
-
-        let html = '<div class="quiz-question">';
-        html += this._roundProgress();
-        html += '<div class="quiz-type-label">📖 组词练习</div>';
-        html += '<div class="quiz-prompt">选一个字和它组成词语</div>';
-        html += '<div class="quiz-big-char">' + target.char + ' + ？</div>';
-        html += '<div class="quiz-options">';
-        options.forEach(o => {
-            html += '<button class="quiz-option" onclick="quiz.checkRoundAnswer(\'' + this._esc(o) + '\', \'' + this._esc(target.char) + '\')">' + o + '</button>';
-        });
-        html += '</div></div>';
-
-        this.container.innerHTML = html;
-    }
-
-    // ── Quiz Type 8: Listen and choose word ──
+    // ── Listen and choose word ──
     _wordMeaning(target) {
         const word = target.words[Math.floor(Math.random() * target.words.length)];
         const wrong = this.pick(this.allChars, 3, target.char);
@@ -416,12 +214,86 @@ class QuizEngine {
         html += '<button class="speak-btn" onclick="quiz.speak(\'' + this._esc(word) + '\', 0.7)">🔊 再听一次</button>';
         html += '<div class="quiz-options word-options">';
         options.forEach(o => {
-            html += '<button class="quiz-option word" onclick="quiz.checkRoundAnswer(\'' + this._esc(o) + '\', \'' + this._esc(target.char) + '\')">' + o + '</button>';
+            html += '<button class="quiz-option word" onclick="quiz.checkRoundAnswer(\'' + this._esc(o) + '\')">' + o + '</button>';
         });
         html += '</div></div>';
-
         this.container.innerHTML = html;
         setTimeout(() => this.speak(word, 0.7), 300);
+    }
+
+    // ── Match pairs (5 pairs at once) ──
+    _startMatchRound() {
+        const selected = this.shuffle(this.allChars).slice(0, 5);
+        const charButtons = this.shuffle([...selected]);
+        const pinyinButtons = this.shuffle([...selected]);
+
+        this._matchState = {
+            pairs: selected,
+            matched: [],
+            selectedChar: null,
+            wrongAttempts: {},
+        };
+
+        let html = '<div class="quiz-question">';
+        html += '<div class="quiz-type-label">🧩 汉字连连看</div>';
+        html += '<div class="quiz-prompt">点击汉字和对应拼音配对（' + selected.length + '对）</div>';
+        html += '<div class="match-grid">';
+        html += '<div class="match-col">';
+        charButtons.forEach(c => {
+            html += '<button class="match-btn match-card char-btn" data-char="' + c.char + '" onclick="quiz.matchClick(this, \'char\', \'' + this._esc(c.char) + '\')">' + c.char + '</button>';
+        });
+        html += '</div>';
+        html += '<div class="match-col">';
+        pinyinButtons.forEach(c => {
+            html += '<button class="match-btn match-card pinyin-btn" data-pinyin="' + c.pinyin + '" onclick="quiz.matchClick(this, \'pinyin\', \'' + this._esc(c.pinyin) + '\')">' + c.pinyin + '</button>';
+        });
+        html += '</div>';
+        html += '</div></div>';
+        this.container.innerHTML = html;
+    }
+
+    matchClick(btn, type, value) {
+        const state = this._matchState;
+        if (!state) return;
+
+        if (type === 'char') {
+            document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            state.selectedChar = value;
+        } else if (type === 'pinyin' && state.selectedChar) {
+            const pair = state.pairs.find(p => p.char === state.selectedChar && p.pinyin === value);
+            if (pair) {
+                state.matched.push(pair.char);
+                const charBtn = document.querySelector('.char-btn[data-char="' + state.selectedChar + '"]');
+                charBtn.classList.add('matched');
+                btn.classList.add('matched');
+                charBtn.disabled = true;
+                btn.disabled = true;
+
+                const hadWrong = (state.wrongAttempts[pair.char] || 0) > 0;
+                this.roundCorrect++;
+                if (!hadWrong) this.firstTryCorrect++;
+                this.score++;
+                this.total++;
+                this._recordAnswer(pair.char, true, pair.pinyin, pair.pinyin);
+
+                state.selectedChar = null;
+                if (this.onScoreChange) this.onScoreChange(this.score, this.total);
+
+                if (state.matched.length === state.pairs.length) {
+                    setTimeout(() => this._showRoundResult(), 600);
+                }
+            } else {
+                btn.classList.add('wrong');
+                setTimeout(() => btn.classList.remove('wrong'), 400);
+                if (!state.wrongAttempts[state.selectedChar]) state.wrongAttempts[state.selectedChar] = 0;
+                state.wrongAttempts[state.selectedChar]++;
+                this.total++;
+                if (this.onScoreChange) this.onScoreChange(this.score, this.total);
+            }
+            document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('selected'));
+            state.selectedChar = null;
+        }
     }
 
     // ── Round progress bar ──
@@ -434,7 +306,7 @@ class QuizEngine {
         return '<div style="font-size:0.75rem;color:#95a5a6;margin-bottom:8px;text-align:right">' + label + '</div>';
     }
 
-    // ── Per-answer recording (local only, batched to server at round end) ──
+    // ── Per-answer recording ──
     _recordAnswer(questionId, correct, userAnswer, correctAnswer) {
         if (!this._roundAnswers) this._roundAnswers = [];
         this._roundAnswers.push({ questionId, correct, quizType: this.mode });
@@ -456,26 +328,25 @@ class QuizEngine {
     }
 
     // ── Round answer checking ──
-    checkRoundAnswer(answer, targetChar) {
+    checkRoundAnswer(answer) {
         this.total++;
         const correct = answer === this.currentAnswer;
-        const qid = this.currentQuestionId || targetChar;
+        const qid = this.currentQuestionId;
         this._recordAnswer(qid, correct, answer, this.currentAnswer);
 
         if (correct) {
             this.score++;
             this.roundCorrect++;
             this.streak++;
+            if (!this._isRetry) this.firstTryCorrect++;
             this.roundIndex++;
         } else {
             this.streak = 0;
-            const target = this.allChars.find(c => c.char === targetChar);
-            if (target) this.wrongQueue.push(target);
+            if (this._currentQuestion) this.wrongQueue.push(this._currentQuestion);
             this.roundIndex++;
         }
 
         if (this.onScoreChange) this.onScoreChange(this.score, this.total);
-
         const msg = correct ? '答对了！' : '答错了，正确答案是：' + this.currentAnswer;
         this._showRoundFeedback(correct, msg);
     }
@@ -495,56 +366,32 @@ class QuizEngine {
         this.container.innerHTML = html;
     }
 
-    _incrementGroupsDone() {
-        const date = new Date().toISOString().slice(0, 10);
-        const localKey = 'vip_groups_done_' + this.userId + '_' + date;
-        try {
-            const count = parseInt(localStorage.getItem(localKey) || '0', 10) + 1;
-            localStorage.setItem(localKey, String(count));
-        } catch(e) {}
-        _apiPost('/api/daily/' + this.userId, { type: 'groups_done', date: date, value: (QuizEngine.getGroupsDoneToday(this.userId)) });
-    }
-
-    static getGroupsDoneToday(userId) {
-        const date = new Date().toISOString().slice(0, 10);
-        try {
-            return parseInt(localStorage.getItem('vip_groups_done_' + userId + '_' + date) || '0', 10);
-        } catch(e) { return 0; }
-    }
-
-    static get dailyGroupLimit() { return 5; }
-
-    static canDoMore(userId) {
-        return QuizEngine.getGroupsDoneToday(userId) < QuizEngine.dailyGroupLimit;
-    }
-
     _showRoundResult() {
         const elapsed = Math.floor((Date.now() - this.roundStartTime) / 1000);
         const earned = this._getTodayEarned();
         const remaining = Math.max(0, this.dailyCap - earned);
-        const perfect = this.roundCorrect === this.roundSize && this.total === this.roundSize;
+        const perfect = this.firstTryCorrect === this.roundSize;
         const perfectBonus = perfect ? 5 : 0;
-        const rawReward = this.roundReward + perfectBonus;
+        const rawReward = (this.firstTryCorrect * 2) + perfectBonus;
         const reward = Math.min(rawReward, remaining);
         const capped = rawReward > remaining;
 
         if (reward > 0 && typeof VipCurrency !== 'undefined') {
-            VipCurrency.addCopper(this.userId, reward, '做题' + this.roundSize + '道答对' + this.roundCorrect + '题');
+            VipCurrency.addCopper(this.userId, reward, '做题' + this.roundSize + '道首次答对' + this.firstTryCorrect + '题');
             this._addTodayEarned(reward);
         }
 
-        this._incrementGroupsDone();
+        this._markTypeDone(this.mode);
         this._flushAnswers();
-        this._logRound(this.mode, elapsed, reward, this.roundCorrect, this.total);
+        this._logRound(this.mode, elapsed, reward, this.firstTryCorrect, this.roundSize);
 
-        const groupsDone = QuizEngine.getGroupsDoneToday(this.userId);
+        const typesDone = QuizEngine.chineseTypesDoneCount(this.userId);
         let html = '<div class="quiz-result correct">';
         html += '<div class="result-icon">🎉</div>';
         html += '<h3>本组完成！</h3>';
-        html += '<div class="result-score">' + this.roundCorrect + ' / ' + this.roundSize + '</div>';
-        html += '<div style="margin:10px 0;font-size:0.9rem;color:#7f8c8d">';
-        html += '用时：' + formatSeconds(elapsed);
-        html += '</div>';
+        html += '<div class="result-score">' + this.firstTryCorrect + ' / ' + this.roundSize + '</div>';
+        html += '<div style="margin:10px 0;font-size:0.9rem;color:#7f8c8d">用时：' + formatSeconds(elapsed) + '</div>';
+        html += '<div style="font-size:0.85rem;color:#7f8c8d;margin:5px 0">首次答对 ' + this.firstTryCorrect + ' 题 × 2 = ' + (this.firstTryCorrect * 2) + ' 铜钱</div>';
         if (perfect) {
             html += '<div style="color:#27ae60;font-size:0.9rem;margin:8px 0;font-weight:bold">全对！额外+5铜钱</div>';
         }
@@ -554,7 +401,7 @@ class QuizEngine {
         if (capped) {
             html += '<div style="color:#e67e22;font-size:0.85rem;margin:8px 0">今日赚钱已达上限（' + this.dailyCap + '文），可继续学习但不再获得铜钱</div>';
         }
-        html += '<div style="font-size:0.8rem;color:#95a5a6;margin:5px 0">今日已完成：' + groupsDone + '/' + QuizEngine.dailyGroupLimit + ' 组</div>';
+        html += '<div style="font-size:0.8rem;color:#95a5a6;margin:5px 0">华语已完成：' + typesDone + '/4 类</div>';
         html += '<button class="quiz-btn" onclick="showQuizMenu()">返回选择</button>';
         html += '</div>';
         this.container.innerHTML = html;
@@ -580,57 +427,6 @@ class QuizEngine {
             localStorage.setItem(key, JSON.stringify(logs));
         } catch(e) {}
         _apiPost('/api/quiz-log/' + this.userId, { mode, correct, total, seconds, earned });
-    }
-
-    // ── Legacy single-question methods (for match pairs / timed) ──
-    checkAnswer(answer) {
-        this.total++;
-        const correct = answer === this.currentAnswer;
-
-        if (correct) {
-            this.score++;
-            this.streak++;
-        } else {
-            this.streak = 0;
-        }
-
-        if (this.onScoreChange) this.onScoreChange(this.score, this.total);
-        this.showResult(correct, correct
-            ? '答对了！'
-            : '答错了，正确答案是：' + this.currentAnswer
-        );
-    }
-
-    showResult(correct, message) {
-        let html = '<div class="quiz-result ' + (correct ? 'correct' : 'wrong') + '">';
-        html += '<div class="result-icon">' + (correct ? '✅' : '❌') + '</div>';
-        html += '<div class="result-msg">' + message + '</div>';
-        if (this.streak >= 3) {
-            html += '<div class="streak">🔥 连续答对 ' + this.streak + ' 题！</div>';
-        }
-        html += '<button class="quiz-btn" onclick="nextQuestion()">下一题</button>';
-        html += '</div>';
-        this.container.innerHTML = html;
-
-        if (typeof renderCurrencyBar === 'function') {
-            const bar = document.getElementById('currencyBar');
-            if (bar) renderCurrencyBar(bar, this.userId);
-        }
-    }
-
-    randomQuestion(mode) {
-        if (mode === 'matchPairs' || mode === 'timedChallenge') {
-            this[mode]();
-        } else {
-            this.startRound(mode);
-        }
-    }
-
-    stopTimer() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
     }
 
     _esc(s) {

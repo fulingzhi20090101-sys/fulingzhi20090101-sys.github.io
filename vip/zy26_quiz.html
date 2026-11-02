@@ -26,6 +26,7 @@
         .quiz-menu-item .title { font-weight: bold; font-size: 0.95rem; }
         .quiz-menu-item .desc { color: #95a5a6; font-size: 0.75rem; margin-top: 4px; }
         .quiz-menu-item .done-badge { color: var(--green); font-size: 0.75rem; margin-top: 4px; font-weight: bold; }
+        .section-label { font-size: 1rem; font-weight: bold; color: var(--accent); margin: 16px 0 8px; padding: 0 4px; }
         .quiz-question { background: white; border-radius: 16px; padding: 30px 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .quiz-type-label { font-size: 0.85rem; color: var(--accent); font-weight: bold; margin-bottom: 10px; }
         .quiz-prompt { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 15px; }
@@ -48,10 +49,6 @@
         .match-btn.selected { border-color: var(--gold); background: #fef9e7; }
         .match-btn.matched { border-color: var(--green); background: #eafaf1; opacity: 0.6; }
         .match-btn.wrong { border-color: var(--red); background: #fdedec; animation: shake 0.3s; }
-        .timed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .timed-timer { font-size: 1.5rem; font-weight: bold; color: var(--red); }
-        .timed-score { font-size: 1.2rem; font-weight: bold; color: var(--green); }
-        .quiz-question.timed .quiz-big-char { font-size: 3.5rem; margin: 10px 0; }
         .quiz-result { background: white; border-radius: 16px; padding: 35px 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .quiz-result.correct { border-top: 4px solid var(--green); }
         .quiz-result.wrong { border-top: 4px solid var(--red); }
@@ -81,7 +78,7 @@
     <script src="vip_common.js?v=7"></script>
     <script src="chars_p5.js?v=3"></script>
     <script src="riddles.js?v=1"></script>
-    <script src="quiz_engine.js?v=6"></script>
+    <script src="quiz_engine.js?v=7"></script>
     <script src="riddle_engine.js?v=1"></script>
     <script>
         const USER_ID = 'zy26';
@@ -120,52 +117,42 @@
         function showQuizMenu() {
             currentMode = null;
             inQuiz = false;
-            if (quiz) quiz.stopTimer();
-            const groupsDone = QuizEngine.getGroupsDoneToday(USER_ID);
-            const groupLimit = QuizEngine.dailyGroupLimit;
-            const allDone = groupsDone >= groupLimit;
-            document.getElementById('scoreBar').textContent = '今日已完成 ' + groupsDone + '/' + groupLimit + ' 组';
+            const typesDone = QuizEngine.getAllTypesDone(USER_ID);
+            const chineseDone = QuizEngine.chineseTypesDoneCount(USER_ID);
+            document.getElementById('scoreBar').textContent = '华语已完成 ' + chineseDone + '/4 类';
             const area = document.getElementById('quizArea');
 
-            function mi(mode, icon, title, desc) {
-                return '<div class="quiz-menu-item' + (allDone ? ' done' : '') + '" onclick="startQuiz(\'' + mode + '\')">' +
+            function mi(mode, icon, title, desc, isDone) {
+                return '<div class="quiz-menu-item' + (isDone ? ' done' : '') + '" onclick="startQuiz(\'' + mode + '\')">' +
                     '<div class="icon">' + icon + '</div><div class="title">' + title + '</div>' +
                     '<div class="desc">' + desc + '</div>' +
-                    (allDone ? '<div class="done-badge">✅ 今日已完成</div>' : '') + '</div>';
+                    (isDone ? '<div class="done-badge">✅ 今日已完成</div>' : '') + '</div>';
             }
 
             let html = '';
             if (riddleEngine) html += riddleEngine.showRiddleMenu();
-            if (allDone) html += '<div style="font-size:0.8rem;color:#27ae60;margin-bottom:8px;padding:0 4px">今日5组已完成，明天再来！</div>';
+            html += '<div class="section-label">📖 识字练习（' + chineseDone + '/4）</div>';
+            if (chineseDone >= 4) html += '<div style="font-size:0.8rem;color:#27ae60;margin-bottom:8px;padding:0 4px">华语全部完成，明天再来！</div>';
             html += '<div class="quiz-menu">';
-            html += mi('listenChooseChar', '🎧', '听词选字', '听词语选汉字');
-            html += mi('charToPinyin', '📝', '看字选拼音', '看汉字选拼音');
-            html += mi('pinyinToChar', '🔤', '看拼音选字', '看拼音选汉字');
-            html += mi('matchPairs', '🧩', '连连看', '汉字拼音配对');
-            html += mi('timedChallenge', '⚡', '限时挑战', '30秒答题赢铜钱');
-            html += mi('formWord', '📖', '组词练习', '选字组成词语');
-            html += mi('wordMeaning', '👂', '听音选词', '听发音选词语');
+            html += mi('wordMeaning', '👂', '听音选词', '听发音选词语（10题）', typesDone.wordMeaning);
+            html += mi('matchPairs', '🧩', '连连看', '汉字拼音配对（5对）', typesDone.matchPairs);
+            html += mi('charToPinyin', '📝', '看字选拼音', '看汉字选拼音（10题）', typesDone.charToPinyin);
+            html += mi('pinyinToChar', '🔤', '看拼音选字', '看拼音选汉字（10题）', typesDone.pinyinToChar);
             html += '</div>';
 
             area.innerHTML = html;
         }
 
         function startQuiz(mode) {
-            if (!QuizEngine.canDoMore(USER_ID)) return;
-
+            if (QuizEngine.isTypeDoneToday(USER_ID, mode)) return;
             currentMode = mode;
             inQuiz = true;
             updateScore(0, 0);
-            quiz.randomQuestion(mode);
-        }
-
-        function nextQuestion() {
-            if (currentMode === 'matchPairs') quiz.matchPairs();
-            else showQuizMenu();
+            quiz.startRound(mode);
         }
 
         function updateScore(score, total) {
-            document.getElementById('scoreBar').textContent = '答对: ' + score + ' / ' + total + (quiz.streak >= 3 ? ' 🔥' + quiz.streak + '连' : '');
+            document.getElementById('scoreBar').textContent = '答对: ' + score + ' / ' + total + (quiz.streak >= 3 ? ' 🔥' + quiz.streak : '');
         }
 
         window.addEventListener('beforeunload', () => VipTime.stopTracking());
